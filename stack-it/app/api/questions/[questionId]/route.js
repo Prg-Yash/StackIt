@@ -7,11 +7,12 @@ import { authOptions } from "../../auth/options";
 export async function GET(req, { params }) {
   try {
     await connectDB();
-    const { questionId } = params;
+    const { questionId } = await params; // Fix: await params first
 
     const question = await Question.findById(questionId)
       .populate("author", "name image")
-      .populate("answers.author", "name image");
+      .populate("answers.author", "name image")
+      .populate("answers.replies.author", "name image");
 
     if (!question) {
       return new Response(JSON.stringify({ error: "Question not found" }), {
@@ -44,31 +45,42 @@ export async function GET(req, { params }) {
 }
 
 export async function PUT(req, { params }) {
-  await connectDB();
-  const session = await getServerSession(authOptions);
-
-  if (!session) {
-    return new Response(JSON.stringify({ error: "Unauthorized" }), {
-      status: 401,
-    });
-  }
-
-  const { questionId } = params;
-  const { title, description, tags } = await req.json();
-
-  if (!title || !description) {
-    return new Response(
-      JSON.stringify({ error: "Title and description are required" }),
-      { status: 400 }
-    );
-  }
-
   try {
+    await connectDB();
+    const session = await getServerSession(authOptions);
+
+    if (!session) {
+      return new Response(JSON.stringify({ error: "Unauthorized" }), {
+        status: 401,
+        headers: {
+          "Content-Type": "application/json",
+        },
+      });
+    }
+
+    const { questionId } = await params; // Fix: await params first
+    const { title, description, tags } = await req.json();
+
+    if (!title || !description) {
+      return new Response(
+        JSON.stringify({ error: "Title and description are required" }),
+        {
+          status: 400,
+          headers: {
+            "Content-Type": "application/json",
+          },
+        }
+      );
+    }
+
     const question = await Question.findById(questionId);
 
     if (!question) {
       return new Response(JSON.stringify({ error: "Question not found" }), {
         status: 404,
+        headers: {
+          "Content-Type": "application/json",
+        },
       });
     }
 
@@ -78,7 +90,12 @@ export async function PUT(req, { params }) {
     ) {
       return new Response(
         JSON.stringify({ error: "Forbidden: Not your question" }),
-        { status: 403 }
+        {
+          status: 403,
+          headers: {
+            "Content-Type": "application/json",
+          },
+        }
       );
     }
 
@@ -97,34 +114,46 @@ export async function PUT(req, { params }) {
       JSON.stringify({ message: "Question updated successfully", question }),
       {
         status: 200,
+        headers: {
+          "Content-Type": "application/json",
+        },
       }
     );
   } catch (err) {
     console.error(err);
     return new Response(JSON.stringify({ error: "Internal Server Error" }), {
       status: 500,
+      headers: {
+        "Content-Type": "application/json",
+      },
     });
   }
 }
 
 export async function DELETE(req, { params }) {
-  await connectDB();
-  const session = await getServerSession(authOptions);
-
-  if (!session) {
-    return new Response(JSON.stringify({ error: "Unauthorized" }), {
-      status: 401,
-    });
-  }
-
-  const { questionId } = params;
-
   try {
+    await connectDB();
+    const session = await getServerSession(authOptions);
+
+    if (!session) {
+      return new Response(JSON.stringify({ error: "Unauthorized" }), {
+        status: 401,
+        headers: {
+          "Content-Type": "application/json",
+        },
+      });
+    }
+
+    const { questionId } = await params; // Fix: await params first
+
     const question = await Question.findById(questionId);
 
     if (!question) {
       return new Response(JSON.stringify({ error: "Question not found" }), {
         status: 404,
+        headers: {
+          "Content-Type": "application/json",
+        },
       });
     }
 
@@ -134,7 +163,12 @@ export async function DELETE(req, { params }) {
     ) {
       return new Response(
         JSON.stringify({ error: "Forbidden: Not your question" }),
-        { status: 403 }
+        {
+          status: 403,
+          headers: {
+            "Content-Type": "application/json",
+          },
+        }
       );
     }
 
@@ -145,12 +179,18 @@ export async function DELETE(req, { params }) {
       JSON.stringify({ message: "Question deleted successfully" }),
       {
         status: 200,
+        headers: {
+          "Content-Type": "application/json",
+        },
       }
     );
   } catch (err) {
     console.error(err);
     return new Response(JSON.stringify({ error: "Internal Server Error" }), {
       status: 500,
+      headers: {
+        "Content-Type": "application/json",
+      },
     });
   }
 }

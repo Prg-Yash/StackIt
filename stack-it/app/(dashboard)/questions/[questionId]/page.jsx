@@ -1,5 +1,6 @@
 "use client";
 
+import { use } from "react";
 import { useState, useEffect } from "react";
 import { useSession } from "next-auth/react";
 import Link from "next/link";
@@ -9,22 +10,30 @@ import {
   ArrowDown,
   MessageSquare,
   Tag,
+  Reply,
+  ChevronDown,
+  ChevronUp,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import TiptapEditor from "@/components/ui/tiptap-editor";
+import { toast } from "sonner";
 
-const QuestionPage = ({ params }) => {
+const QuestionPage = ({ params: rawParams }) => {
+  const params = use(rawParams);
   const { data: session } = useSession();
   const [question, setQuestion] = useState(null);
   const [loading, setLoading] = useState(true);
   const [answerContent, setAnswerContent] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [replyContent, setReplyContent] = useState({});
+  const [showReplyEditor, setShowReplyEditor] = useState({});
+  const [showReplies, setShowReplies] = useState({});
 
   useEffect(() => {
     fetchQuestion();
-  }, []);
+  }, [params.questionId]); // Add params.questionId as dependency
 
   const fetchQuestion = async () => {
     try {
@@ -38,13 +47,17 @@ const QuestionPage = ({ params }) => {
       setQuestion(data);
     } catch (error) {
       console.error("Error fetching question:", error);
+      toast.error("Failed to fetch question");
     } finally {
       setLoading(false);
     }
   };
 
   const handleVoteQuestion = async () => {
-    if (!session) return;
+    if (!session) {
+      toast.error("Please sign in to vote");
+      return;
+    }
 
     try {
       const response = await fetch(`/api/questions/${params.questionId}/vote`, {
@@ -62,17 +75,23 @@ const QuestionPage = ({ params }) => {
 
       setQuestion((prev) => ({
         ...prev,
-        votes: prev.votes.includes(session.user.id)
-          ? prev.votes.filter((id) => id !== session.user.id)
-          : [...prev.votes, session.user.id],
+        votes: data.hasVoted
+          ? [...prev.votes, session.user.id]
+          : prev.votes.filter((id) => id !== session.user.id),
       }));
+
+      toast.success(data.message);
     } catch (error) {
       console.error("Error voting:", error);
+      toast.error("Failed to process vote");
     }
   };
 
   const handleVoteAnswer = async (answerId) => {
-    if (!session) return;
+    if (!session) {
+      toast.error("Please sign in to vote");
+      return;
+    }
 
     try {
       const response = await fetch(
@@ -97,16 +116,19 @@ const QuestionPage = ({ params }) => {
           if (answer._id === answerId) {
             return {
               ...answer,
-              votes: answer.votes.includes(session.user.id)
-                ? answer.votes.filter((id) => id !== session.user.id)
-                : [...answer.votes, session.user.id],
+              votes: data.hasVoted
+                ? [...answer.votes, session.user.id]
+                : answer.votes.filter((id) => id !== session.user.id),
             };
           }
           return answer;
         }),
       }));
+
+      toast.success(data.message);
     } catch (error) {
       console.error("Error voting:", error);
+      toast.error("Failed to process vote");
     }
   };
 
@@ -139,6 +161,98 @@ const QuestionPage = ({ params }) => {
       console.error("Error posting answer:", error);
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  const handleShowReplyEditor = (answerId) => {
+    setShowReplyEditor((prev) => ({
+      ...prev,
+      [answerId]: !prev[answerId],
+    }));
+    if (!showReplyEditor[answerId]) {
+      setReplyContent((prev) => ({
+        ...prev,
+        [answerId]: "",
+      }));
+    }
+  };
+
+  const handleToggleReplies = (answerId) => {
+    setShowReplies((prev) => ({
+      ...prev,
+      [answerId]: !prev[answerId],
+    }));
+  };
+
+  const handleReplySubmit = async (answerId) => {
+    if (!session || !replyContent[answerId]?.trim()) return;
+
+    try {
+      const response = await fetch(
+        `/api/questions/${params.questionId}/answers/${answerId}/replies`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ content: replyContent[answerId] }),
+        }
+      );
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || "Failed to add reply");
+      }
+
+      setQuestion(data.question);
+      setReplyContent((prev) => ({
+        ...prev,
+        [answerId]: "",
+      }));
+      setShowReplyEditor((prev) => ({
+        ...prev,
+        [answerId]: false,
+      }));
+      setShowReplies((prev) => ({
+        ...prev,
+        [answerId]: true,
+      }));
+      toast.success("Reply added successfully");
+    } catch (error) {
+      console.error("Error adding reply:", error);
+      toast.error("Failed to add reply");
+    }
+  };
+
+  const handleVoteReply = async (answerId, replyId) => {
+    if (!session) {
+      toast.error("Please sign in to vote");
+      return;
+    }
+
+    try {
+      const response = await fetch(
+        `/api/questions/${params.questionId}/answers/${answerId}/replies/${replyId}/vote`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+        }
+      );
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || "Failed to vote");
+      }
+
+      setQuestion(data.question);
+      toast.success(data.message);
+    } catch (error) {
+      console.error("Error voting:", error);
+      toast.error("Failed to process vote");
     }
   };
 
@@ -263,13 +377,124 @@ const QuestionPage = ({ params }) => {
                     className="prose prose-sm sm:prose-base dark:prose-invert max-w-none mb-4"
                     dangerouslySetInnerHTML={{ __html: answer.content }}
                   />
-                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <div className="flex items-center gap-4 text-sm text-muted-foreground">
                     <span>
                       Answered by {answer.author?.name || "Anonymous"}
                     </span>
                     <span>•</span>
                     <span>{formatDate(answer.createdAt)}</span>
+                    {session && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="gap-2"
+                        onClick={() => handleShowReplyEditor(answer._id)}
+                      >
+                        <Reply className="h-4 w-4" />
+                        Reply
+                      </Button>
+                    )}
                   </div>
+
+                  {/* Reply Editor */}
+                  {showReplyEditor[answer._id] && (
+                    <div className="mt-4 pl-4 border-l-2">
+                      <TiptapEditor
+                        content={replyContent[answer._id]}
+                        onChange={(content) =>
+                          setReplyContent((prev) => ({
+                            ...prev,
+                            [answer._id]: content,
+                          }))
+                        }
+                        placeholder="Write your reply..."
+                      />
+                      <div className="flex justify-end gap-2 mt-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleShowReplyEditor(answer._id)}
+                        >
+                          Cancel
+                        </Button>
+                        <Button
+                          size="sm"
+                          onClick={() => handleReplySubmit(answer._id)}
+                          disabled={!replyContent[answer._id]?.trim()}
+                        >
+                          Post Reply
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Replies Section */}
+                  {answer.replies?.length > 0 && (
+                    <div className="mt-4">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="gap-2"
+                        onClick={() => handleToggleReplies(answer._id)}
+                      >
+                        {showReplies[answer._id] ? (
+                          <ChevronUp className="h-4 w-4" />
+                        ) : (
+                          <ChevronDown className="h-4 w-4" />
+                        )}
+                        {answer.replies.length}{" "}
+                        {answer.replies.length === 1 ? "Reply" : "Replies"}
+                      </Button>
+
+                      {showReplies[answer._id] && (
+                        <div className="pl-8 mt-2 space-y-4 border-l-2">
+                          {answer.replies.map((reply) => (
+                            <div key={reply._id} className="relative">
+                              <div className="flex gap-4">
+                                {/* Vote buttons for reply */}
+                                <div className="flex flex-col items-center gap-2">
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() =>
+                                      handleVoteReply(answer._id, reply._id)
+                                    }
+                                    disabled={!session}
+                                    className={`h-6 w-6 p-0 ${
+                                      reply.votes.includes(session?.user?.id)
+                                        ? "text-primary"
+                                        : ""
+                                    }`}
+                                  >
+                                    <ArrowUp className="h-4 w-4" />
+                                  </Button>
+                                  <span className="text-sm font-semibold">
+                                    {reply.votes.length}
+                                  </span>
+                                </div>
+
+                                <div className="flex-1">
+                                  <div
+                                    className="prose prose-sm dark:prose-invert max-w-none mb-2"
+                                    dangerouslySetInnerHTML={{
+                                      __html: reply.content,
+                                    }}
+                                  />
+                                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                                    <span>
+                                      {reply.author?.name || "Anonymous"}
+                                    </span>
+                                    <span>•</span>
+                                    <span>{formatDate(reply.createdAt)}</span>
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
               </div>
             </CardContent>

@@ -2,6 +2,31 @@ import mongoose from "mongoose";
 
 const { Schema } = mongoose;
 
+const ReplySchema = new Schema(
+  {
+    content: {
+      type: Schema.Types.Mixed,
+      required: true,
+    },
+    author: {
+      type: Schema.Types.ObjectId,
+      ref: "User",
+      required: true,
+    },
+    createdAt: {
+      type: Date,
+      default: Date.now,
+    },
+    votes: [
+      {
+        type: Schema.Types.ObjectId,
+        ref: "User",
+      },
+    ],
+  },
+  { _id: true }
+);
+
 const AnswerSchema = new Schema(
   {
     content: {
@@ -23,6 +48,10 @@ const AnswerSchema = new Schema(
         ref: "User",
       },
     ],
+    replies: {
+      type: [ReplySchema],
+      default: [],
+    },
   },
   { _id: true }
 );
