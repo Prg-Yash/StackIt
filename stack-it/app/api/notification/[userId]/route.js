@@ -1,19 +1,19 @@
 // /app/api/notifications/[userId]/route.js
-import { connectDB } from '@/lib/mongodb';
-import Notification from '@/models/Notification';
+import { connectDB } from '@/lib/mongoose';
+import Notification from '@/models/Notifications';
 
 export async function GET(_, { params }) {
-  await connectDB();
-  const { userId } = await params;
-
   try {
+    await connectDB();
+    const { userId } = params;
+
     const notifications = await Notification.find({ user: userId })
       .sort({ createdAt: -1 })
       .limit(50);
 
-    return new Response(JSON.stringify(notifications), { status: 200 });
+    return Response.json(notifications);
   } catch (err) {
     console.error(err);
-    return new Response(JSON.stringify({ error: 'Failed to fetch notifications' }), { status: 500 });
+    return Response.json({ error: 'Failed to fetch notifications' }, { status: 500 });
   }
 }

@@ -37,7 +37,7 @@ const NavigationBar = () => {
       name: "Ask",
       link: "/ask",
     },
-  ];
+  ]; 
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   const handleSignOut = async () => {
@@ -76,6 +76,16 @@ const NavigationBar = () => {
                       </Avatar>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
+                      <DropdownMenuItem
+                        className="cursor-pointer"
+                      >
+                        <Link href="/profile">Profile</Link>
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
+                        className="cursor-pointer"
+                      >
+                        <Link href="/notifications">Notifications</Link>
+                      </DropdownMenuItem>
                       <DropdownMenuItem
                         className="cursor-pointer"
                         onClick={handleSignOut}
