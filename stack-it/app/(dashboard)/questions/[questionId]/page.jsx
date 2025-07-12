@@ -793,7 +793,6 @@ const QuestionPage = ({ params: rawParams }) => {
                           </div>
                         )}
                       </div>
-                    </div>
                   </CardContent>
                 </Card>
               ))}
@@ -817,14 +816,6 @@ const QuestionPage = ({ params: rawParams }) => {
                 <TiptapEditor
                   content={answerContent}
                   onChange={setAnswerContent}
-                  onBlur={(html) => {
-                    handleToxicityCheck(html).then((isToxic) => {
-                      if (isToxic) {
-                        console.warn("Toxic content detected, clearing description");
-                        setAnswerContent("");
-                      }
-                    });
-                  }}
                   placeholder="Write your answer here..."
                 />
 
