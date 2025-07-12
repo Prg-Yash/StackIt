@@ -14,6 +14,14 @@ const UserSchema = new Schema(
       maxlength: 50,
       trim: true,
     },
+    username: {
+      type: String,
+      required: true,
+      unique: true,
+      lowercase: true,
+      trim: true,
+      maxlength: 30,
+    },
     email: {
       type: String,
       required: true,
@@ -32,6 +40,8 @@ const UserSchema = new Schema(
       default: "credentials",
     },
     emailVerified: Date,
+    emailVerificationToken: String,
+    emailVerificationExpires: Date,
     image: String,
     bio: String,
     role: {

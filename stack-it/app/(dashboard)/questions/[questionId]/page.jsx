@@ -36,6 +36,7 @@ const QuestionPage = ({ params: rawParams }) => {
   const [showReplyEditor, setShowReplyEditor] = useState({});
   const [showReplies, setShowReplies] = useState({});
   const [hasFetched, setHasFetched] = useState(false);
+  const [summary, setSummary] = useState("");
 
   useEffect(() => {
     if (!hasFetched) {
@@ -206,6 +207,52 @@ const QuestionPage = ({ params: rawParams }) => {
     }));
   };
 
+  //   const handleToxicityCheck = async (text) => {
+  //   try {
+  //     const response = await fetch(`${process.env.NEXT_PUBLIC_FLASKAUTH_URL}/toxic-analyze`, {
+  //       method: "POST",
+  //       headers: {
+  //         "Content-Type": "application/json",
+  //       },
+  //       body: JSON.stringify({ "text": text }),
+  //     });
+
+  //     if (!response.ok) {
+  //       throw new Error("Failed to check toxicity");
+  //     }
+
+  //     const data = await response.json();
+  //     console.log("Toxicity check response:", data);
+  //     return data.flagged;
+  //   } catch (error) {
+  //     console.error("Error checking toxicity:", error);
+  //     return false;
+  //   }
+  // };
+
+    const handleToxicityCheck = async (text) => {
+    try {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_FLASKAUTH_URL}/toxic-analyze`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ "text": text }),
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to check toxicity");
+      }
+
+      const data = await response.json();
+      console.log("Toxicity check response:", data);
+      return data.flagged;
+    } catch (error) {
+      console.error("Error checking toxicity:", error);
+      return false;
+    }
+  };
+
   const handleReplyChange = (answerId, value) => {
     setReplyContent((prev) => ({
       ...prev,
@@ -272,6 +319,52 @@ const QuestionPage = ({ params: rawParams }) => {
     }
   };
 
+  //   const handleSummarize = async (text) => {
+  //   try {
+  //     const response = await fetch(`${process.env.NEXT_PUBLIC_FLASKAUTH_URL}/summarize`, {
+  //       method: "POST",
+  //       headers: {
+  //         "Content-Type": "application/json",
+  //       },
+  //       body: JSON.stringify({ "text": text }),
+  //     });
+
+  //     if (!response.ok) {
+  //       throw new Error("Failed to check toxicity");
+  //     }
+
+  //     const data = await response.json();
+  //     console.log("Summary response:", data.summary);
+  //     setSummary(data.summary);
+  //   } catch (error) {
+  //     console.error("Error checking toxicity:", error);
+  //     return null;
+  //   }
+  // };
+
+    const handleSummarize = async (text) => {
+    try {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_FLASKAUTH_URL}/summarize`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ "text": text }),
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to check toxicity");
+      }
+
+      const data = await response.json();
+      console.log("Summary response:", data.summary);
+      setSummary(data.summary);
+    } catch (error) {
+      console.error("Error checking toxicity:", error);
+      return null;
+    }
+  };
+
   const formatDate = (dateString) => {
     const date = new Date(dateString);
     const now = new Date();
@@ -313,7 +406,7 @@ const QuestionPage = ({ params: rawParams }) => {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50">
+    <div className="min-h-screen">
       {/* Header */}
 
       <div className="container mx-auto px-4 py-6 max-w-5xl">
@@ -578,6 +671,18 @@ const QuestionPage = ({ params: rawParams }) => {
                             Reply
                           </Button>
                         )}
+                        {session && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="gap-2"
+                        onClick={() => handleSummarize(answer.content)}
+                        disabled={!answer.content.trim()}
+                      >
+                        Summarize
+                      </Button>
+                    )}
+                  </div>
 
                         {showReplyEditor[answer._id] && (
                           <div className="mt-4 pl-6 border-l-2">
@@ -693,6 +798,72 @@ const QuestionPage = ({ params: rawParams }) => {
                 </Card>
               ))}
           </div>
+
+          <Separator className="my-8" />
+
+          {/* Add Answer Form */}
+          {session ? (
+            <Card className="bg-white/70 backdrop-blur-md border-0 shadow-xl">
+              <CardHeader>
+                <h3 className="text-xl font-bold text-gray-800 flex items-center gap-2">
+                  <Send className="w-5 h-5" />
+                  Your Answer
+                </h3>
+                <p className="text-muted-foreground">
+                  Share your knowledge and help the community
+                </p>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <TiptapEditor
+                  content={answerContent}
+                  onChange={setAnswerContent}
+                  onBlur={(html) => {
+                    handleToxicityCheck(html).then((isToxic) => {
+                      if (isToxic) {
+                        console.warn("Toxic content detected, clearing description");
+                        setAnswerContent("");
+                      }
+                    });
+                  }}
+                  placeholder="Write your answer here..."
+                />
+
+                <div className="flex items-center justify-between">
+                  <div className="text-sm text-muted-foreground">
+                    <p className="font-medium">💡 Tips for a great answer:</p>
+                    <ul className="text-xs mt-1 space-y-1">
+                      <li>• Be specific and provide examples</li>
+                      <li>• Include code snippets when relevant</li>
+                      <li>• Explain your reasoning</li>
+                    </ul>
+                  </div>
+                  <Button
+                    onClick={handleSubmitAnswer}
+                    disabled={!answerContent.trim() || isSubmitting}
+                    className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105"
+                  >
+                    <Send className="w-4 h-4 mr-2" />
+                    {isSubmitting ? "Submitting..." : "Submit Answer"}
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          ) : (
+            <Card>
+              <CardContent className="py-6">
+                <p className="text-center text-muted-foreground">
+                  Please{" "}
+                  <Link
+                    href="/sign-in"
+                    className="text-primary hover:underline"
+                  >
+                    sign in
+                  </Link>{" "}
+                  to answer this question.
+                </p>
+              </CardContent>
+            </Card>
+          )}
         </div>
       </div>
     </div>

@@ -3,6 +3,26 @@ import bcrypt from "bcryptjs";
 import { connectDB } from "@/lib/mongoose";
 import User from "@/models/Users";
 
+// Function to generate username from email
+const generateUsername = (email) => {
+  return email.split('@')[0].toLowerCase();
+};
+
+// Function to generate unique username if it already exists
+const generateUniqueUsername = async (baseUsername) => {
+  let username = baseUsername;
+  let counter = 1;
+  
+  while (true) {
+    const existingUser = await User.findOne({ username });
+    if (!existingUser) {
+      return username;
+    }
+    username = `${baseUsername}${counter}`;
+    counter++;
+  }
+};
+
 export async function POST(req) {
   try {
     const { name, email, password } = await req.json();
@@ -25,12 +45,17 @@ export async function POST(req) {
       );
     }
 
+    // Generate unique username
+    const baseUsername = generateUsername(email);
+    const username = await generateUniqueUsername(baseUsername);
+
     // Hash password
     const hashedPassword = await bcrypt.hash(password, 12);
 
     // Create user
     const user = await User.create({
       name,
+      username,
       email,
       password: hashedPassword,
     });

@@ -33,11 +33,18 @@ const NavigationBar = () => {
       name: "Home",
       link: "/",
     },
+  ];
+  const authItems = [
+    {
+      name: "Search",
+      link: "/search"
+    },
     {
       name: "Ask",
       link: "/ask",
     },
-  ];
+    
+  ]
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   const handleSignOut = async () => {
@@ -53,7 +60,7 @@ const NavigationBar = () => {
             {/* Desktop Navigation */}
             <NavBody>
               <NavbarLogo />
-              <NavItems items={navItems} />
+              <NavItems items={status === "authenticated" && session?.user ? [...navItems, ...authItems] : navItems} />
               <div className="flex items-center gap-4">
                 {status === "unauthenticated" && (
                   <>
@@ -76,6 +83,16 @@ const NavigationBar = () => {
                       </Avatar>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
+                      <DropdownMenuItem
+                        className="cursor-pointer"
+                      >
+                        <Link href="/profile">Profile</Link>
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
+                        className="cursor-pointer"
+                      >
+                        <Link href="/notifications">Notifications</Link>
+                      </DropdownMenuItem>
                       <DropdownMenuItem
                         className="cursor-pointer"
                         onClick={handleSignOut}
@@ -102,7 +119,7 @@ const NavigationBar = () => {
                 isOpen={isMobileMenuOpen}
                 onClose={() => setIsMobileMenuOpen(false)}
               >
-                {navItems.map((item, idx) => (
+                {(status === "authenticated" && session?.user ? [...navItems, ...authItems] : navItems).map((item, idx) => (
                   <Link
                     key={`mobile-link-${idx}`}
                     href={item.link}
