@@ -1,10 +1,10 @@
 // /models/User.js
-import mongoose from 'mongoose';
+import mongoose from "mongoose";
 
 const { Schema } = mongoose;
 
-const ROLES = ['user', 'admin'];
-const PROVIDERS = ['credentials'];
+const ROLES = ["user", "admin"];
+const PROVIDERS = ["credentials"];
 
 const UserSchema = new Schema(
   {
@@ -29,7 +29,7 @@ const UserSchema = new Schema(
     provider: {
       type: String,
       enum: PROVIDERS,
-      default: 'credentials',
+      default: "credentials",
     },
     emailVerified: Date,
     image: String,
@@ -37,12 +37,13 @@ const UserSchema = new Schema(
     role: {
       type: String,
       enum: ROLES,
-      default: 'user',
+      default: "user",
     },
   },
   { timestamps: true }
 );
 
-UserSchema.index({ email: 1 });
+// Remove the duplicate index declaration
+// UserSchema.index({ email: 1 });
 
-export default mongoose.models.User || mongoose.model('User', UserSchema);
+export default mongoose.models.User || mongoose.model("User", UserSchema);

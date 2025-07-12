@@ -16,8 +16,18 @@ import {
 } from "@/components/ui/resizable-navbar";
 import { useState } from "react";
 import { Button } from "./ui/button";
+import { useSession, signOut } from "next-auth/react";
+import { Avatar, AvatarFallback } from "./ui/avatar";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "./ui/dropdown-menu";
+import { Toaster, toast } from "sonner";
 
 const NavigationBar = () => {
+  const { data: session, status } = useSession();
   const navItems = [
     {
       name: "Home",
@@ -30,6 +40,11 @@ const NavigationBar = () => {
   ];
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
+  const handleSignOut = async () => {
+    await signOut({ redirect: false });
+    toast.success("Signed out successfully");
+  };
+
   return (
     <header className="flex justify-center items-center">
       <Container>
@@ -38,34 +53,38 @@ const NavigationBar = () => {
             {/* Desktop Navigation */}
             <NavBody>
               <NavbarLogo />
-              {/* TODO: Add Auth based NavItems */}
-              <NavItems
-                items={navItems} 
-              />
+              <NavItems items={navItems} />
               <div className="flex items-center gap-4">
-                {/* TODO: SignedOut Logic (Login/SignUp Buttons) */}
-                {/* <SignedOut>
-                  <SignInButton>
-                    <NavbarButton variant="secondary">LogIn</NavbarButton>
-                  </SignInButton>
-                  <SignUpButton>
-                    <NavbarButton variant="primary">Sign Up</NavbarButton>
-                  </SignUpButton>
-                </SignedOut> */}
+                {status === "unauthenticated" && (
+                  <>
+                    <Link href="/sign-in">
+                      <NavbarButton variant="secondary">LogIn</NavbarButton>
+                    </Link>
+                    <Link href="/sign-up">
+                      <NavbarButton variant="primary">Sign Up</NavbarButton>
+                    </Link>
+                  </>
+                )}
 
-                {/* TODO: SignedIn Logic (Profile & Notifications Button) */}
-                {/* <SignedIn>
-                  <UserButton
-                    appearance={{
-                      elements: {
-                        avatarBox: {
-                          width: "3rem",
-                          height: "3rem",
-                        },
-                      },
-                    }}
-                  />
-                </SignedIn> */}
+                {status === "authenticated" && session?.user && (
+                  <DropdownMenu>
+                    <DropdownMenuTrigger className="focus:outline-none">
+                      <Avatar className="h-12 w-12">
+                        <AvatarFallback className="bg-black text-white">
+                          {session.user.name?.charAt(0).toUpperCase() || "U"}
+                        </AvatarFallback>
+                      </Avatar>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuItem
+                        className="cursor-pointer"
+                        onClick={handleSignOut}
+                      >
+                        Sign Out
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                )}
               </div>
             </NavBody>
 
@@ -94,46 +113,48 @@ const NavigationBar = () => {
                   </Link>
                 ))}
                 <div className="flex w-full flex-col gap-4">
-                {/* TODO: SignedOut Logic for Mobile (Login/SignUp Buttons) */}
-                  {/* <SignedOut>
-                    <SignInButton>
-                      <NavbarButton
-                        onClick={() => setIsMobileMenuOpen(false)}
-                        variant="outline"
-                        className="w-full"
-                      >
-                        LogIn
-                      </NavbarButton>
-                    </SignInButton>
-                    <SignUpButton>
-                      <NavbarButton
-                        onClick={() => setIsMobileMenuOpen(false)}
-                        variant="primary"
-                        className="w-full"
-                      >
-                        SignUp
-                      </NavbarButton>
-                    </SignUpButton>
-                  </SignedOut> */}
+                  {status === "unauthenticated" && (
+                    <>
+                      <Link href="/sign-in">
+                        <NavbarButton
+                          onClick={() => setIsMobileMenuOpen(false)}
+                          variant="outline"
+                          className="w-full"
+                        >
+                          LogIn
+                        </NavbarButton>
+                      </Link>
+                      <Link href="/sign-up">
+                        <NavbarButton
+                          onClick={() => setIsMobileMenuOpen(false)}
+                          variant="primary"
+                          className="w-full"
+                        >
+                          SignUp
+                        </NavbarButton>
+                      </Link>
+                    </>
+                  )}
 
-                {/* TODO: SignedIn Logic for Mobile (Profile & Notifications Button) */}
-                  {/* <SignedIn>
-                    <Link href="/my-account">
-                      <NavbarButton
-                        onClick={() => setIsMobileMenuOpen(false)}
-                        variant="primary"
-                        className="w-full"
-                      >
-                        My Account
-                      </NavbarButton>
-                    </Link>
-                  </SignedIn> */}
+                  {status === "authenticated" && (
+                    <NavbarButton
+                      onClick={() => {
+                        handleSignOut();
+                        setIsMobileMenuOpen(false);
+                      }}
+                      variant="outline"
+                      className="w-full"
+                    >
+                      Sign Out
+                    </NavbarButton>
+                  )}
                 </div>
               </MobileNavMenu>
             </MobileNav>
           </Navbar>
         </div>
       </Container>
+      <Toaster position="top-center" />
     </header>
   );
 };

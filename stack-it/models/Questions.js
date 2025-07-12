@@ -1,4 +1,4 @@
-import mongoose from 'mongoose';
+import mongoose from "mongoose";
 
 const { Schema } = mongoose;
 
@@ -10,7 +10,7 @@ const AnswerSchema = new Schema(
     },
     author: {
       type: Schema.Types.ObjectId,
-      ref: 'User',
+      ref: "User",
       required: true,
     },
     createdAt: {
@@ -20,7 +20,7 @@ const AnswerSchema = new Schema(
     votes: [
       {
         type: Schema.Types.ObjectId,
-        ref: 'User',
+        ref: "User",
       },
     ],
   },
@@ -46,7 +46,7 @@ const QuestionSchema = new Schema(
     },
     author: {
       type: Schema.Types.ObjectId,
-      ref: 'User',
+      ref: "User",
       required: true,
     },
     answers: {
@@ -61,18 +61,22 @@ const QuestionSchema = new Schema(
     votes: [
       {
         type: Schema.Types.ObjectId,
-        ref: 'User',
+        ref: "User",
       },
     ],
     views: {
       type: Number,
       default: 0,
     },
+    images: {
+      type: [String],
+      default: null,
+    },
   },
   { timestamps: true }
 );
 
-QuestionSchema.index({ title: 'text', description: 'text' });
+QuestionSchema.index({ title: "text", description: "text" });
 
 export default mongoose.models.Question ||
-  mongoose.model('Question', QuestionSchema);
+  mongoose.model("Question", QuestionSchema);
