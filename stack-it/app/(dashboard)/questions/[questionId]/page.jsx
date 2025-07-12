@@ -507,7 +507,7 @@ const QuestionPage = ({ params: rawParams }) => {
           </div>
 
           {/* Answer Form */}
-          {session && (
+          {/* {session && (
             <Card className="bg-white/70 backdrop-blur-md border-0 shadow-lg">
               <CardContent className="p-6">
                 <TiptapEditor
@@ -526,7 +526,7 @@ const QuestionPage = ({ params: rawParams }) => {
                 </div>
               </CardContent>
             </Card>
-          )}
+          )} */}
 
           {/* Answers List */}
           <div className="space-y-6">
