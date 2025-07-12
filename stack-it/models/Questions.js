@@ -1,14 +1,30 @@
-// /models/Question.js
 import mongoose from 'mongoose';
 
 const { Schema } = mongoose;
 
-const VoteSchema = new Schema(
+const AnswerSchema = new Schema(
   {
-    voter: { type: Schema.Types.ObjectId, ref: 'User', required: true },
-    value: { type: Number, enum: [1, -1], required: true },
+    content: {
+      type: Schema.Types.Mixed,
+      required: true,
+    },
+    author: {
+      type: Schema.Types.ObjectId,
+      ref: 'User',
+      required: true,
+    },
+    createdAt: {
+      type: Date,
+      default: Date.now,
+    },
+    votes: [
+      {
+        type: Schema.Types.ObjectId,
+        ref: 'User',
+      },
+    ],
   },
-  { _id: false }
+  { _id: true }
 );
 
 const QuestionSchema = new Schema(
@@ -33,26 +49,21 @@ const QuestionSchema = new Schema(
       ref: 'User',
       required: true,
     },
-    answers: [
-      {
-        type: Schema.Types.ObjectId,
-        ref: 'Answer',
-      },
-    ],
-    acceptedAnswer: {
-      type: Schema.Types.ObjectId,
-      ref: 'Answer',
-      default: null,
+    answers: {
+      type: [AnswerSchema],
+      default: [],
     },
     tags: {
       type: [String],
       index: true,
       default: [],
     },
-    votes: {
-      type: [VoteSchema],
-      default: [],
-    },
+    votes: [
+      {
+        type: Schema.Types.ObjectId,
+        ref: 'User',
+      },
+    ],
     views: {
       type: Number,
       default: 0,

@@ -1,9 +1,13 @@
-import React from 'react'
+import NavigationBar from "@/components/Navbar";
+import React from "react";
 
-const layout = ({children}) => {
+const layout = ({ children }) => {
   return (
-    <div>{children}</div>
-  )
-}
+    <div>
+      <NavigationBar />
+      {children}
+    </div>
+  );
+};
 
-export default layout
+export default layout;
