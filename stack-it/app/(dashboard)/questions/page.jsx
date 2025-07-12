@@ -71,6 +71,40 @@ const mockQuestions = [
     createdAt: "3 days ago",
     hasImage: false,
   },
+  {
+    id: 3,
+    title: "How to optimize database queries in PostgreSQL?",
+    description: "My PostgreSQL queries are running slowly. What are some techniques to optimize them?",
+    tags: ["postgresql", "database", "performance"],
+    votes: 8,
+    answers: 2,
+    author: "db_admin",
+    createdAt: "1 day ago",
+    hasImage: false,
+  },
+  {
+    id: 4,
+    title: "CSS Grid vs Flexbox: When to use which?",
+    description:
+      "I'm confused about when to use CSS Grid and when to use Flexbox. Can someone explain the differences and use cases?",
+    tags: ["css", "grid", "flexbox", "layout"],
+    votes: 31,
+    answers: 12,
+    author: "css_ninja",
+    createdAt: "2 days ago",
+    hasImage: true,
+  },
+  {
+    id: 5,
+    title: "Docker containerization best practices",
+    description: "What are the best practices for containerizing a Node.js application with Docker?",
+    tags: ["docker", "nodejs", "containerization", "devops"],
+    votes: 19,
+    answers: 5,
+    author: "devops_guru",
+    createdAt: "3 days ago",
+    hasImage: false,
+  },
 ]
 
 const allTags = [

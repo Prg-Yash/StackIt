@@ -180,16 +180,16 @@ export const NavbarLogo = () => {
   return (
     <a
       href="#"
-      className="relative z-20 mr-4 flex items-center space-x-2 px-2 text-sm font-normal text-black"
+      className="relative z-20 mr-4 flex items-center space-x-2 px-2 text-sm font-normal text-black min-h-28"
     >
-      <Image
+      {/* <Image
         src="/logo.svg"
         alt="Logo"
         width={500}
         height={500}
         className="w-28 h-28"
-      />
-      {/* <span className="font-medium text-black">Startup</span> */}
+      /> */}
+      <h2 className="font-semibold text-4xl text-black">StackIt</h2>
     </a>
   );
 };
