@@ -1,6 +1,5 @@
-from flask import Flask, request, jsonify, Response
-from pymongo import MongoClient
-from encoder import CustomJSONProvider
+from flask import Flask, request, jsonify
+from flask_cors import CORS
 from bot import ask_bot
 from tags import get_tags
 from toxicity_detector import ToxicityDetector
@@ -17,12 +16,7 @@ similarity_model = SentenceSimilarity()
 
 # Flask App
 app = Flask(__name__)
-app.json = CustomJSONProvider(app)
-
-# MongoDB connection
-client = MongoClient("mongodb+srv://devally:gfGbnI7OusH1TeoE@stackit.flmympn.mongodb.net/?retryWrites=true&w=majority&appName=stackit") 
-db = client["stackit"]
-collection = db["questions"]
+CORS(app)
 
 # route for asking bot for quick answers
 @app.route("/ask-bot", methods=["POST"])
