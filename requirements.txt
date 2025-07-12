@@ -15,3 +15,5 @@ huggingface_hub
 pip install huggingface_hub[hf_xet]
 
 scikit-learn
+
+pymongo

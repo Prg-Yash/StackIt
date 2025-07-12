@@ -12,11 +12,7 @@ class SentenceSimilarity:
         candidate_embeddings = embeddings[1:]
 
         similarities = cosine_similarity(ref_embedding, candidate_embeddings)[0]
-        result = []
-        for i, sim in enumerate(similarities):
-            if sim >= threshold:
-                result.append({
-                    "sentence": candidates[i],
-                    "score": round(float(sim), 4)
-                })
-        return result
+        return [
+            {"sentence": candidates[i], "score": round(float(sim), 4)}
+            for i, sim in enumerate(similarities) if sim >= threshold
+        ]

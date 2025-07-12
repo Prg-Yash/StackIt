@@ -1,4 +1,6 @@
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, Response
+from pymongo import MongoClient
+from encoder import CustomJSONProvider
 from bot import ask_bot
 from tags import get_tags
 from toxicity_detector import ToxicityDetector
@@ -12,8 +14,15 @@ summarizer = BartSummarizer()
 # initialize the sentence similarity model
 similarity_model = SentenceSimilarity()
 
+
 # Flask App
 app = Flask(__name__)
+app.json = CustomJSONProvider(app)
+
+# MongoDB connection
+client = MongoClient("mongodb+srv://devally:gfGbnI7OusH1TeoE@stackit.flmympn.mongodb.net/?retryWrites=true&w=majority&appName=stackit") 
+db = client["stackit"]
+collection = db["questions"]
 
 # route for asking bot for quick answers
 @app.route("/ask-bot", methods=["POST"])
@@ -74,19 +83,36 @@ def summarize():
 @app.route("/similarity", methods=["POST"])
 def similarity():
     data = request.get_json()
-    if not data or "reference" not in data or "candidates" not in data:
-        return jsonify({"error": "Missing 'reference' or 'candidates' in request."}), 400
+    candidates = get_questions()
 
-    reference = data["reference"]
-    candidates = data["candidates"]
-    threshold = data.get("threshold", 0.80)
+    if not data or "reference" not in data or not candidates:
+        return jsonify({"error": "Missing 'reference' or candidates in request."}), 400
 
-    matches = similarity_model.find_similar_sentences(reference, candidates, threshold)
+    reference = data["reference"].strip()
+    
+    candidate_titles = [doc["title"] for doc in candidates if doc["title"] != reference]
+    candidates_ids = [doc["_id"] for doc in candidates if doc["title"] != reference]
+    
+    if not candidate_titles:
+        return jsonify({"error": "No valid candidate titles available."}), 400
+    
+    threshold = data.get("threshold", 0.65)
+
+    matches = similarity_model.find_similar_sentences(reference, candidate_titles, threshold)
+    for match in matches:
+        match["id"] = candidates_ids[candidate_titles.index(match["sentence"])]
+        
     return jsonify({
         "reference": reference,
         "threshold": threshold,
         "matches": matches
     })
+
+def get_questions():
+    docs = list(collection.find({}, {"_id": 1, "title": 1}))
+    for doc in docs:
+        doc["_id"] = str(doc["_id"])
+    return docs
     
 # Run app
 if __name__ == "__main__":
