@@ -29,7 +29,6 @@ import { Textarea } from "@/components/ui/textarea"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Label } from "@/components/ui/label"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Progress } from "@/components/ui/progress"
 
 export default function ProfilePage() {
@@ -44,7 +43,6 @@ export default function ProfilePage() {
     currentPassword: "",
     newPassword: "",
     confirmPassword: "",
-    image: "",
   })
 
   const [errors, setErrors] = useState({})
@@ -55,7 +53,6 @@ export default function ProfilePage() {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
   const [isChangingPassword, setIsChangingPassword] = useState(false)
   const [saveSuccess, setSaveSuccess] = useState(false)
-  const [imageFile, setImageFile] = useState(null)
   const [isSendingVerification, setIsSendingVerification] = useState(false)
   const [verificationSent, setVerificationSent] = useState(false)
   const [debugInfo, setDebugInfo] = useState(null)
@@ -124,7 +121,6 @@ export default function ProfilePage() {
         currentPassword: "",
         newPassword: "",
         confirmPassword: "",
-        image: user.image || "",
       })
     } catch (error) {
       console.error('Error fetching profile:', error)
@@ -160,37 +156,37 @@ export default function ProfilePage() {
     }
   }
 
-  const debugTokenVerification = async () => {
-    try {
-      setIsDebugging(true)
-      setDebugInfo(null)
+  // const debugTokenVerification = async () => {
+  //   try {
+  //     setIsDebugging(true)
+  //     setDebugInfo(null)
 
-      // First get debug info about tokens
-      const debugResponse = await fetch('/api/debug/tokens')
-      const debugData = await debugResponse.json()
+  //     // First get debug info about tokens
+  //     const debugResponse = await fetch('/api/debug/tokens')
+  //     const debugData = await debugResponse.json()
 
-      // If there's a token in the URL, test it
-      const urlParams = new URLSearchParams(window.location.search)
-      const tokenFromUrl = urlParams.get('token')
+  //     // If there's a token in the URL, test it
+  //     const urlParams = new URLSearchParams(window.location.search)
+  //     const tokenFromUrl = urlParams.get('token')
       
-      if (tokenFromUrl) {
-        const verifyResponse = await fetch('/api/debug/verify-token', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ token: tokenFromUrl })
-        })
-        const verifyData = await verifyResponse.json()
-        setDebugInfo({ debugData, verifyData, tokenFromUrl })
-      } else {
-        setDebugInfo({ debugData, tokenFromUrl: null })
-      }
-    } catch (error) {
-      console.error('Debug error:', error)
-      setDebugInfo({ error: error.message })
-    } finally {
-      setIsDebugging(false)
-    }
-  }
+  //     if (tokenFromUrl) {
+  //       const verifyResponse = await fetch('/api/debug/verify-token', {
+  //         method: 'POST',
+  //         headers: { 'Content-Type': 'application/json' },
+  //         body: JSON.stringify({ token: tokenFromUrl })
+  //       })
+  //       const verifyData = await verifyResponse.json()
+  //       setDebugInfo({ debugData, verifyData, tokenFromUrl })
+  //     } else {
+  //       setDebugInfo({ debugData, tokenFromUrl: null })
+  //     }
+  //   } catch (error) {
+  //     console.error('Debug error:', error)
+  //     setDebugInfo({ error: error.message })
+  //   } finally {
+  //     setIsDebugging(false)
+  //   }
+  // }
 
   // Validation functions
   const validateForm = () => {
@@ -237,21 +233,6 @@ export default function ProfilePage() {
     }
   }
 
-  const handleImageUpload = (e) => {
-    const file = e.target.files?.[0]
-    if (file) {
-      setImageFile(file)
-      // Create preview URL
-      const previewUrl = URL.createObjectURL(file)
-      setFormData((prev) => ({ ...prev, image: previewUrl }))
-    }
-  }
-
-  const handleRemoveImage = () => {
-    setImageFile(null)
-    setFormData((prev) => ({ ...prev, image: "" }))
-  }
-
   const handleSubmit = async (e) => {
     e.preventDefault()
 
@@ -268,7 +249,6 @@ export default function ProfilePage() {
         body: JSON.stringify({
           name: formData.name,
           bio: formData.bio,
-          image: formData.image
         })
       })
 
@@ -324,12 +304,12 @@ export default function ProfilePage() {
     if (!userData) return 0
     
     let completed = 0
-    const total = 4
+    const total = 3
 
     if (formData.name.trim()) completed++
     if (userData.email) completed++
     if (formData.bio.trim()) completed++
-    if (formData.image) completed++
+    // Removed image from completeness calculation
 
     return (completed / total) * 100
   }
@@ -423,51 +403,6 @@ export default function ProfilePage() {
                 )}
 
                 <form onSubmit={handleSubmit} className="space-y-6">
-                  {/* Profile Picture */}
-                  <div className="space-y-4">
-                    <Label className="text-base font-semibold">Profile Picture</Label>
-                    <div className="flex items-center gap-6">
-                      <div className="relative">
-                        <Avatar className="w-24 h-24 border-4 border-white shadow-lg">
-                          <AvatarImage src={formData.image || "/placeholder.svg"} alt="Profile picture" />
-                          <AvatarFallback className="text-2xl bg-gradient-to-r from-blue-500 to-purple-500 text-white">
-                            {formData.name.charAt(0).toUpperCase()}
-                          </AvatarFallback>
-                        </Avatar>
-                        {formData.image && (
-                          <Button
-                            type="button"
-                            variant="destructive"
-                            size="sm"
-                            className="absolute -top-2 -right-2 h-6 w-6 p-0 rounded-full shadow-lg"
-                            onClick={handleRemoveImage}
-                          >
-                            <X className="h-3 w-3" />
-                          </Button>
-                        )}
-                      </div>
-                      <div className="space-y-2">
-                        <Input
-                          id="image-upload"
-                          type="file"
-                          accept="image/*"
-                          onChange={handleImageUpload}
-                          className="hidden"
-                        />
-                        <Button
-                          type="button"
-                          variant="outline"
-                          onClick={() => document.getElementById("image-upload")?.click()}
-                          className="bg-white/50 hover:bg-white transition-colors"
-                        >
-                          <Camera className="w-4 h-4 mr-2" />
-                          Change Picture
-                        </Button>
-                        <p className="text-sm text-muted-foreground">JPG, PNG or GIF. Max size 5MB.</p>
-                      </div>
-                    </div>
-                  </div>
-
                   {/* Basic Information */}
                   <div className="space-y-4">
                     <h3 className="text-lg font-semibold text-gray-800">Basic Information</h3>
@@ -551,7 +486,7 @@ export default function ProfilePage() {
                       </div>
                       
                       {/* Debug Button */}
-                      <div className="mt-2">
+                      {/* <div className="mt-2">
                         <Button
                           type="button"
                           variant="outline"
@@ -572,7 +507,7 @@ export default function ProfilePage() {
                             </>
                           )}
                         </Button>
-                      </div>
+                      </div> */}
                       
                       {/* Debug Info Display */}
                       {debugInfo && (
@@ -775,10 +710,6 @@ export default function ProfilePage() {
                     </div>
                     <div className="flex items-center justify-between">
                       <span>Email</span>
-                      <CheckCircle className="w-4 h-4 text-green-500" />
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <span>Email Verified</span>
                       {userData.emailVerified ? (
                         <CheckCircle className="w-4 h-4 text-green-500" />
                       ) : (
@@ -793,14 +724,7 @@ export default function ProfilePage() {
                         <AlertCircle className="w-4 h-4 text-yellow-500" />
                       )}
                     </div>
-                    <div className="flex items-center justify-between">
-                      <span>Profile Picture</span>
-                      {formData.image ? (
-                        <CheckCircle className="w-4 h-4 text-green-500" />
-                      ) : (
-                        <AlertCircle className="w-4 h-4 text-yellow-500" />
-                      )}
-                    </div>
+                    {/* Removed Profile Picture from completeness checklist */}
                   </div>
                 </div>
               </CardContent>
@@ -831,6 +755,13 @@ export default function ProfilePage() {
                   </div>
 
                   <div className="flex items-center justify-between">
+                    <span className="text-muted-foreground">Username</span>
+                    <Badge variant="outline" className="font-mono">
+                      @{userData.username}
+                    </Badge>
+                  </div>
+
+                  <div className="flex items-center justify-between">
                     <span className="text-muted-foreground">Email Status</span>
                     <Badge variant={userData.emailVerified ? "default" : "secondary"} className="capitalize">
                       {userData.emailVerified ? "Verified" : "Unverified"}
@@ -847,43 +778,6 @@ export default function ProfilePage() {
                     <span className="font-medium">{new Date(userData.updatedAt).toLocaleDateString()}</span>
                   </div>
                 </div>
-              </CardContent>
-            </Card>
-
-            {/* Quick Actions */}
-            <Card className="bg-gradient-to-br from-blue-50 to-purple-50 border-0 shadow-lg">
-              <CardHeader>
-                <CardTitle className="text-lg font-semibold">Quick Actions</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                <Link href="/notifications">
-                  <Button
-                    variant="outline"
-                    className="w-full justify-start bg-white/50 hover:bg-white transition-colors"
-                  >
-                    <Mail className="w-4 h-4 mr-2" />
-                    View Notifications
-                  </Button>
-                </Link>
-
-                <Link href="/ask">
-                  <Button
-                    variant="outline"
-                    className="w-full justify-start bg-white/50 hover:bg-white transition-colors"
-                  >
-                    <Upload className="w-4 h-4 mr-2" />
-                    Ask a Question
-                  </Button>
-                </Link>
-
-                <Button
-                  variant="outline"
-                  className="w-full justify-start bg-white/50 hover:bg-white transition-colors"
-                  disabled
-                >
-                  <Calendar className="w-4 h-4 mr-2" />
-                  Activity History
-                </Button>
               </CardContent>
             </Card>
           </div>
