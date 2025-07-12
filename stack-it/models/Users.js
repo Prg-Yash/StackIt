@@ -32,6 +32,8 @@ const UserSchema = new Schema(
       default: "credentials",
     },
     emailVerified: Date,
+    emailVerificationToken: String,
+    emailVerificationExpires: Date,
     image: String,
     bio: String,
     role: {
