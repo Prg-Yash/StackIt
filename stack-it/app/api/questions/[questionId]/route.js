@@ -1,18 +1,18 @@
 // /app/api/questions/[questionId]/route.js
 import { connectDB } from "@/lib/mongoose";
 import Question from "@/models/Questions";
+import User from "@/models/Users";
 import { getServerSession } from "next-auth";
 import { authOptions } from "../../auth/options";
 
 export async function GET(req, { params }) {
   try {
     await connectDB();
-    const { questionId } = await params; // Fix: await params first
+    const { questionId } = await params;
+    const session = await getServerSession(authOptions);
 
-    const question = await Question.findById(questionId)
-      .populate("author", "name image")
-      .populate("answers.author", "name image")
-      .populate("answers.replies.author", "name image");
+    // First fetch the question to check author
+    const question = await Question.findById(questionId);
 
     if (!question) {
       return new Response(JSON.stringify({ error: "Question not found" }), {
@@ -23,11 +23,41 @@ export async function GET(req, { params }) {
       });
     }
 
-    // Increment view count
-    question.views += 1;
-    await question.save();
+    // Only process view if user is authenticated
+    if (session?.user?.id) {
+      const user = await User.findById(session.user.id);
+      const hasViewed = user?.viewedQuestions?.includes(questionId) || false;
+      const isAuthor = question.author.toString() === session.user.id;
 
-    return new Response(JSON.stringify(question), {
+      console.log("View count debug:", {
+        userId: session.user.id,
+        hasViewed,
+        isAuthor,
+        currentViews: question.views,
+      });
+
+      // Only increment view and update user's viewed questions if:
+      // 1. User is not the author
+      // 2. User hasn't viewed this question before
+      if (!isAuthor && !hasViewed) {
+        console.log("Incrementing view count");
+        // Increment view count
+        await Question.findByIdAndUpdate(questionId, { $inc: { views: 1 } });
+
+        // Add question to user's viewed questions
+        await User.findByIdAndUpdate(session.user.id, {
+          $addToSet: { viewedQuestions: questionId },
+        });
+      }
+    }
+
+    // Then fetch the updated question with all its data
+    const populatedQuestion = await Question.findById(questionId)
+      .populate("author", "name image")
+      .populate("answers.author", "name image")
+      .populate("answers.replies.author", "name image");
+
+    return new Response(JSON.stringify(populatedQuestion), {
       status: 200,
       headers: {
         "Content-Type": "application/json",
