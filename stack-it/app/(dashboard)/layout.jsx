@@ -11,10 +11,6 @@ const DashboardLayout = ({ children }) => {
     return <div>Loading...</div>;
   }
 
-  if (status === "unauthenticated") {
-    redirect("/sign-in");
-  }
-
   return (
     <div className="min-h-screen bg-gray-50">
       <NavigationBar />

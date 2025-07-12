@@ -15,7 +15,7 @@ export async function POST(req, { params }) {
       });
     }
 
-    const { questionId, answerId } = params;
+    const { questionId, answerId } = await params;
     const question = await Question.findById(questionId);
 
     if (!question) {
