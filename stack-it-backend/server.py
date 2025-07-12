@@ -3,11 +3,14 @@ from bot import ask_bot
 from tags import get_tags
 from toxicity_detector import ToxicityDetector
 from bart_summarizer import BartSummarizer
+from similarity import SentenceSimilarity
 
 # initialize the toxicity detector
 toxicity_detector = ToxicityDetector()
 # initialize the summarizer
 summarizer = BartSummarizer()
+# initialize the sentence similarity model
+similarity_model = SentenceSimilarity()
 
 # Flask App
 app = Flask(__name__)
@@ -67,6 +70,24 @@ def summarize():
     summary = summarizer.summarize(data["text"])
     return jsonify({"summary": summary})
 
+# Route for sentence similarity comparison  
+@app.route("/similarity", methods=["POST"])
+def similarity():
+    data = request.get_json()
+    if not data or "reference" not in data or "candidates" not in data:
+        return jsonify({"error": "Missing 'reference' or 'candidates' in request."}), 400
+
+    reference = data["reference"]
+    candidates = data["candidates"]
+    threshold = data.get("threshold", 0.80)
+
+    matches = similarity_model.find_similar_sentences(reference, candidates, threshold)
+    return jsonify({
+        "reference": reference,
+        "threshold": threshold,
+        "matches": matches
+    })
+    
 # Run app
 if __name__ == "__main__":
     app.run(host='0.0.0.0', port=5000, debug=True)

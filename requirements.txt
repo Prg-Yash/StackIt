@@ -1,10 +1,17 @@
 flask
+
+transformers
+torch
+sentence-transformers
+
 pip install "numpy<2.0.0"
 python-dotenv
+
 langchain>=0.1.15
 langchain-core>=0.1.15
 langchain-huggingface
-transformers
-huggingface_hub
 pydantic==2.11
+huggingface_hub
 pip install huggingface_hub[hf_xet]
+
+scikit-learn
