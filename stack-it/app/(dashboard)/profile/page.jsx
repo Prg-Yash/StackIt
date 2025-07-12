@@ -22,6 +22,14 @@ import {
   Loader2,
   Send,
   RefreshCw,
+  MessageSquare,
+  ThumbsUp,
+  Eye as EyeIcon,
+  Clock,
+  Filter,
+  ChevronDown,
+  ChevronUp,
+  Plus,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -30,6 +38,13 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Label } from "@/components/ui/label"
 import { Progress } from "@/components/ui/progress"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 
 export default function ProfilePage() {
   const { data: session, status } = useSession()
@@ -58,6 +73,18 @@ export default function ProfilePage() {
   const [debugInfo, setDebugInfo] = useState(null)
   const [isDebugging, setIsDebugging] = useState(false)
 
+  // Questions state
+  const [userQuestions, setUserQuestions] = useState([])
+  const [isLoadingQuestions, setIsLoadingQuestions] = useState(false)
+  const [questionsPagination, setQuestionsPagination] = useState({
+    page: 1,
+    limit: 5,
+    total: 0,
+    hasMore: false,
+    totalPages: 0,
+  })
+  const [questionsSortBy, setQuestionsSortBy] = useState("newest")
+
   // Fetch user data on component mount
   useEffect(() => {
     if (status === 'loading') return
@@ -69,6 +96,13 @@ export default function ProfilePage() {
 
     fetchUserProfile()
   }, [status, session])
+
+  // Fetch user questions when userData is available
+  useEffect(() => {
+    if (userData?._id) {
+      fetchUserQuestions()
+    }
+  }, [userData?._id, questionsSortBy])
 
   // Handle URL parameters for success/error messages
   useEffect(() => {
@@ -130,6 +164,52 @@ export default function ProfilePage() {
     }
   }
 
+  const fetchUserQuestions = async (page = 1) => {
+    if (!userData?._id) return
+
+    try {
+      setIsLoadingQuestions(true)
+      const response = await fetch(
+        `/api/questions/user/${userData._id}?page=${page}&limit=${questionsPagination.limit}&sortBy=${questionsSortBy}`
+      )
+      
+      if (!response.ok) {
+        throw new Error('Failed to fetch questions')
+      }
+      
+      const data = await response.json()
+      
+      if (page === 1) {
+        setUserQuestions(data.questions)
+      } else {
+        setUserQuestions(prev => [...prev, ...data.questions])
+      }
+      
+      setQuestionsPagination(data.pagination)
+    } catch (error) {
+      console.error('Error fetching user questions:', error)
+    } finally {
+      setIsLoadingQuestions(false)
+    }
+  }
+
+  const loadMoreQuestions = () => {
+    if (questionsPagination.hasMore && !isLoadingQuestions) {
+      fetchUserQuestions(questionsPagination.page + 1)
+    }
+  }
+
+  const formatDate = (dateString) => {
+    const date = new Date(dateString)
+    const now = new Date()
+    const diffInHours = Math.floor((now - date) / (1000 * 60 * 60))
+    
+    if (diffInHours < 1) return 'Just now'
+    if (diffInHours < 24) return `${diffInHours}h ago`
+    if (diffInHours < 168) return `${Math.floor(diffInHours / 24)}d ago`
+    return date.toLocaleDateString()
+  }
+
   const sendVerificationEmail = async () => {
     try {
       setIsSendingVerification(true)
@@ -155,38 +235,6 @@ export default function ProfilePage() {
       setIsSendingVerification(false)
     }
   }
-
-  // const debugTokenVerification = async () => {
-  //   try {
-  //     setIsDebugging(true)
-  //     setDebugInfo(null)
-
-  //     // First get debug info about tokens
-  //     const debugResponse = await fetch('/api/debug/tokens')
-  //     const debugData = await debugResponse.json()
-
-  //     // If there's a token in the URL, test it
-  //     const urlParams = new URLSearchParams(window.location.search)
-  //     const tokenFromUrl = urlParams.get('token')
-      
-  //     if (tokenFromUrl) {
-  //       const verifyResponse = await fetch('/api/debug/verify-token', {
-  //         method: 'POST',
-  //         headers: { 'Content-Type': 'application/json' },
-  //         body: JSON.stringify({ token: tokenFromUrl })
-  //       })
-  //       const verifyData = await verifyResponse.json()
-  //       setDebugInfo({ debugData, verifyData, tokenFromUrl })
-  //     } else {
-  //       setDebugInfo({ debugData, tokenFromUrl: null })
-  //     }
-  //   } catch (error) {
-  //     console.error('Debug error:', error)
-  //     setDebugInfo({ error: error.message })
-  //   } finally {
-  //     setIsDebugging(false)
-  //   }
-  // }
 
   // Validation functions
   const validateForm = () => {
@@ -348,8 +396,7 @@ export default function ProfilePage() {
 
   return (
     <div className="">
-
-      <div className="container mx-auto px-4 py-6 max-w-4xl">
+      <div className="container mx-auto px-4 py-6 max-w-6xl">
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Main Profile Form */}
           <div className="lg:col-span-2">
@@ -484,30 +531,6 @@ export default function ProfilePage() {
                           </Button>
                         )}
                       </div>
-                      
-                      {/* Debug Button */}
-                      {/* <div className="mt-2">
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          onClick={debugTokenVerification}
-                          disabled={isDebugging}
-                          className="bg-yellow-50 hover:bg-yellow-100 transition-colors text-yellow-700 border-yellow-200"
-                        >
-                          {isDebugging ? (
-                            <>
-                              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                              Debugging...
-                            </>
-                          ) : (
-                            <>
-                              <RefreshCw className="w-4 h-4 mr-2" />
-                              Debug Tokens
-                            </>
-                          )}
-                        </Button>
-                      </div> */}
                       
                       {/* Debug Info Display */}
                       {debugInfo && (
@@ -683,6 +706,158 @@ export default function ProfilePage() {
                 </form>
               </CardContent>
             </Card>
+
+            {/* User's Questions Section */}
+            <Card className="bg-white/70 backdrop-blur-md border-0 shadow-xl mt-6">
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <CardTitle className="text-2xl font-bold text-gray-800 flex items-center gap-2">
+                      <MessageSquare className="w-6 h-6" />
+                      My Questions
+                    </CardTitle>
+                    <p className="text-muted-foreground">Questions you've asked on the platform</p>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <Select value={questionsSortBy} onValueChange={setQuestionsSortBy}>
+                      <SelectTrigger className="w-40 bg-white/50">
+                        <Filter className="w-4 h-4 mr-2" />
+                        <SelectValue placeholder="Sort by" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="newest">Newest</SelectItem>
+                        <SelectItem value="oldest">Oldest</SelectItem>
+                        <SelectItem value="most-voted">Most Voted</SelectItem>
+                        <SelectItem value="most-answers">Most Answers</SelectItem>
+                        <SelectItem value="most-views">Most Views</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <Button
+                      onClick={() => router.push('/ask')}
+                      className="bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white"
+                    >
+                      <Plus className="w-4 h-4 mr-2" />
+                      Ask Question
+                    </Button>
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent>
+                {isLoadingQuestions && userQuestions.length === 0 ? (
+                  <div className="flex items-center justify-center py-12">
+                    <div className="text-center">
+                      <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4" />
+                      <p className="text-gray-600">Loading your questions...</p>
+                    </div>
+                  </div>
+                ) : userQuestions.length === 0 ? (
+                  <div className="text-center py-12">
+                    <MessageSquare className="h-16 w-16 text-gray-300 mx-auto mb-4" />
+                    <h3 className="text-lg font-semibold text-gray-700 mb-2">No questions yet</h3>
+                    <p className="text-gray-500 mb-6">Start asking questions to help others and build your reputation!</p>
+                    <Button
+                      onClick={() => router.push('/ask')}
+                      className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
+                    >
+                      <Plus className="w-4 h-4 mr-2" />
+                      Ask Your First Question
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {userQuestions.map((question) => (
+                      <div
+                        key={question._id}
+                        className="p-4 bg-white/50 rounded-lg border border-gray-200 hover:border-gray-300 transition-all duration-200 hover:shadow-md"
+                      >
+                        <div className="flex items-start justify-between">
+                          <div className="flex-1">
+                            <Link
+                              href={`/questions/${question._id}`}
+                              className="block group"
+                            >
+                              <h3 className="text-lg font-semibold text-gray-800 group-hover:text-blue-600 transition-colors mb-2">
+                                {question.title}
+                              </h3>
+                            </Link>
+                            <p className="text-gray-600 text-sm mb-3 line-clamp-2">
+                              {question.content}
+                            </p>
+                            
+                            {/* Tags */}
+                            {question.tags && question.tags.length > 0 && (
+                              <div className="flex flex-wrap gap-1 mb-3">
+                                {question.tags.slice(0, 3).map((tag, index) => (
+                                  <Badge key={index} variant="secondary" className="text-xs">
+                                    {tag}
+                                  </Badge>
+                                ))}
+                                {question.tags.length > 3 && (
+                                  <Badge variant="outline" className="text-xs">
+                                    +{question.tags.length - 3} more
+                                  </Badge>
+                                )}
+                              </div>
+                            )}
+
+                            {/* Stats */}
+                            <div className="flex items-center gap-4 text-sm text-gray-500">
+                              <div className="flex items-center gap-1">
+                                <ThumbsUp className="w-4 h-4" />
+                                <span>{question.votes?.length || 0} votes</span>
+                              </div>
+                              <div className="flex items-center gap-1">
+                                <MessageSquare className="w-4 h-4" />
+                                <span>{question.answers?.length || 0} answers</span>
+                              </div>
+                              <div className="flex items-center gap-1">
+                                <EyeIcon className="w-4 h-4" />
+                                <span>{question.views || 0} views</span>
+                              </div>
+                              <div className="flex items-center gap-1">
+                                <Clock className="w-4 h-4" />
+                                <span>{formatDate(question.createdAt)}</span>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+
+                    {/* Load More Button */}
+                    {questionsPagination.hasMore && (
+                      <div className="text-center pt-4">
+                        <Button
+                          onClick={loadMoreQuestions}
+                          disabled={isLoadingQuestions}
+                          variant="outline"
+                          className="bg-white/50 hover:bg-white"
+                        >
+                          {isLoadingQuestions ? (
+                            <>
+                              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                              Loading...
+                            </>
+                          ) : (
+                            <>
+                              <ChevronDown className="w-4 h-4 mr-2" />
+                              Load More Questions
+                            </>
+                          )}
+                        </Button>
+                      </div>
+                    )}
+
+                    {/* Pagination Info */}
+                    {userQuestions.length > 0 && (
+                      <div className="text-center text-sm text-gray-500 pt-2">
+                        Showing {userQuestions.length} of {questionsPagination.total} questions
+                      </div>
+                    )}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
           </div>
 
           {/* Sidebar */}
@@ -724,7 +899,6 @@ export default function ProfilePage() {
                         <AlertCircle className="w-4 h-4 text-yellow-500" />
                       )}
                     </div>
-                    {/* Removed Profile Picture from completeness checklist */}
                   </div>
                 </div>
               </CardContent>
@@ -776,6 +950,42 @@ export default function ProfilePage() {
                   <div className="flex items-center justify-between">
                     <span className="text-muted-foreground">Last updated</span>
                     <span className="font-medium">{new Date(userData.updatedAt).toLocaleDateString()}</span>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Questions Stats */}
+            <Card className="bg-white/70 backdrop-blur-md border-0 shadow-lg">
+              <CardHeader>
+                <CardTitle className="text-lg font-semibold flex items-center gap-2">
+                  <MessageSquare className="w-5 h-5" />
+                  Questions Stats
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="space-y-3 text-sm">
+                  <div className="flex items-center justify-between">
+                    <span className="text-muted-foreground">Total Questions</span>
+                    <span className="font-semibold text-lg">{questionsPagination.total}</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-muted-foreground">Total Views</span>
+                    <span className="font-medium">
+                      {userQuestions.reduce((sum, q) => sum + (q.views || 0), 0)}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-muted-foreground">Total Votes</span>
+                    <span className="font-medium">
+                      {userQuestions.reduce((sum, q) => sum + (q.votes?.length || 0), 0)}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-muted-foreground">Total Answers</span>
+                    <span className="font-medium">
+                      {userQuestions.reduce((sum, q) => sum + (q.answers?.length || 0), 0)}
+                    </span>
                   </div>
                 </div>
               </CardContent>
