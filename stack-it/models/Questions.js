@@ -42,12 +42,22 @@ const AnswerSchema = new Schema(
       type: Date,
       default: Date.now,
     },
-    votes: [
+    upvotes: [
       {
         type: Schema.Types.ObjectId,
         ref: "User",
       },
     ],
+    downvotes: [
+      {
+        type: Schema.Types.ObjectId,
+        ref: "User",
+      },
+    ],
+    isAccepted: {
+      type: Boolean,
+      default: false,
+    },
     replies: {
       type: [ReplySchema],
       default: [],
@@ -87,7 +97,13 @@ const QuestionSchema = new Schema(
       index: true,
       default: [],
     },
-    votes: [
+    upvotes: [
+      {
+        type: Schema.Types.ObjectId,
+        ref: "User",
+      },
+    ],
+    downvotes: [
       {
         type: Schema.Types.ObjectId,
         ref: "User",

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useSession } from "next-auth/react";
 import Link from "next/link";
 import {
   Search,
@@ -38,6 +39,7 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { toast } from "sonner";
 
 const page = () => {
+  const { data: session } = useSession();
   const [searchQuery, setSearchQuery] = useState("");
   const [sortBy, setSortBy] = useState("newest");
   const [selectedTags, setSelectedTags] = useState([]);
@@ -111,6 +113,47 @@ const page = () => {
     setSelectedTags((prev) =>
       prev.includes(tag) ? prev.filter((t) => t !== tag) : [...prev, tag]
     );
+  };
+
+  const handleVote = async (questionId) => {
+    if (!session) {
+      toast.error("Please sign in to vote");
+      return;
+    }
+
+    try {
+      // Check if user has already voted
+      const question = questions.find((q) => q._id === questionId);
+      const hasVoted = question?.upvotes?.includes(session.user.id);
+
+      const response = await fetch(`/api/questions/${questionId}/vote`, {
+        method: "POST",
+      });
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || "Failed to vote");
+      }
+
+      // Update the questions state immediately
+      setQuestions((prevQuestions) =>
+        prevQuestions.map((q) =>
+          q._id === questionId
+            ? {
+                ...q,
+                upvotes: q.upvotes?.includes(session.user.id)
+                  ? q.upvotes.filter((id) => id !== session.user.id)
+                  : [...(q.upvotes || []), session.user.id],
+              }
+            : q
+        )
+      );
+
+      toast.success(hasVoted ? "Vote removed" : "Vote added");
+    } catch (error) {
+      console.error("Error voting:", error);
+      toast.error("Failed to vote");
+    }
   };
 
   const formatDate = (dateString) => {
@@ -429,10 +472,16 @@ const page = () => {
                           <Button
                             variant="outline"
                             size="sm"
-                            className="flex items-center gap-1 bg-white/50 hover:bg-gradient-to-r hover:from-blue-500 hover:to-purple-500 hover:text-white transition-all duration-300 hover:scale-110 group"
+                            onClick={() => handleVote(question._id)}
+                            disabled={!session}
+                            className={`flex items-center gap-1 bg-white/50 hover:bg-gradient-to-r hover:from-blue-500 hover:to-purple-500 hover:text-white transition-all duration-300 hover:scale-110 group ${
+                              question.upvotes?.includes(session?.user?.id)
+                                ? "text-green-600"
+                                : ""
+                            }`}
                           >
                             <ArrowUp className="w-4 h-4 group-hover:animate-bounce" />
-                            {question.votes?.length || 0}
+                            {question.upvotes?.length || 0}
                           </Button>
 
                           <div className="flex items-center gap-1 text-sm text-muted-foreground bg-white/50 rounded-full px-2 py-1">

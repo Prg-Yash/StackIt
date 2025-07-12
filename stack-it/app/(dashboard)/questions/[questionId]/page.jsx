@@ -6,6 +6,7 @@ import Link from "next/link";
 import {
   ArrowLeft,
   ArrowUp,
+  ArrowDown,
   Tag,
   Calendar,
   Send,
@@ -62,31 +63,49 @@ const QuestionPage = ({ params: rawParams }) => {
     }
   };
 
-  const handleVoteQuestion = async () => {
+  const handleVoteQuestion = async (voteType = "vote") => {
     if (!session) {
       toast.error("Please sign in to vote");
       return;
     }
 
     try {
-      const response = await fetch(`/api/questions/${params.questionId}/vote`, {
-        method: "POST",
-      });
+      // Check if user has already voted
+      const hasVoted = question.upvotes?.includes(session.user.id);
+
+      // Update UI immediately
+      setQuestion((prevQuestion) => ({
+        ...prevQuestion,
+        upvotes: prevQuestion.upvotes?.includes(session.user.id)
+          ? prevQuestion.upvotes.filter((id) => id !== session.user.id)
+          : [...(prevQuestion.upvotes || []), session.user.id],
+      }));
+
+      const response = await fetch(
+        `/api/questions/${params.questionId}/${voteType}`,
+        {
+          method: "POST",
+        }
+      );
       const data = await response.json();
 
       if (!response.ok) {
+        // Revert UI change on error
+        setQuestion((prevQuestion) => ({
+          ...prevQuestion,
+          upvotes: data.upvotes || prevQuestion.upvotes,
+        }));
         throw new Error(data.error || "Failed to vote");
       }
 
-      fetchQuestion(); // Refresh question data
-      toast.success(data.message);
+      toast.success(hasVoted ? "Vote removed" : "Vote added");
     } catch (error) {
       console.error("Error voting:", error);
       toast.error("Failed to vote");
     }
   };
 
-  const handleVoteAnswer = async (answerId) => {
+  const handleVoteAnswer = async (answerId, voteType = "vote") => {
     if (!session) {
       toast.error("Please sign in to vote");
       return;
@@ -94,7 +113,7 @@ const QuestionPage = ({ params: rawParams }) => {
 
     try {
       const response = await fetch(
-        `/api/questions/${params.questionId}/answers/${answerId}/vote`,
+        `/api/questions/${params.questionId}/answers/${answerId}/${voteType}`,
         {
           method: "POST",
         }
@@ -110,6 +129,33 @@ const QuestionPage = ({ params: rawParams }) => {
     } catch (error) {
       console.error("Error voting:", error);
       toast.error("Failed to vote");
+    }
+  };
+
+  const handleAcceptAnswer = async (answerId) => {
+    if (!session) {
+      toast.error("Please sign in to accept answers");
+      return;
+    }
+
+    try {
+      const response = await fetch(
+        `/api/questions/${params.questionId}/answers/${answerId}/accept`,
+        {
+          method: "POST",
+        }
+      );
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || "Failed to accept answer");
+      }
+
+      fetchQuestion(); // Refresh question data
+      toast.success(data.message);
+    } catch (error) {
+      console.error("Error accepting answer:", error);
+      toast.error("Failed to accept answer");
     }
   };
 
@@ -334,6 +380,15 @@ const QuestionPage = ({ params: rawParams }) => {
     return date.toLocaleDateString();
   };
 
+  const calculateAnswerQuality = (answer) => {
+    const upvotes = answer.upvotes?.length || 0;
+    const downvotes = answer.downvotes?.length || 0;
+    const total = upvotes + downvotes;
+
+    if (total === 0) return 0;
+    return Math.round((upvotes / total) * 100);
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50">
@@ -424,17 +479,19 @@ const QuestionPage = ({ params: rawParams }) => {
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={handleVoteQuestion}
+                  onClick={() => handleVoteQuestion("vote")}
                   disabled={!session}
                   className={`flex items-center gap-1 bg-white/50 hover:bg-gradient-to-r hover:from-blue-500 hover:to-purple-500 hover:text-white transition-all duration-300 hover:scale-110 group ${
-                    question.votes.includes(session?.user?.id)
-                      ? "text-primary"
+                    question.upvotes?.includes(session?.user?.id)
+                      ? "text-green-600"
                       : ""
                   }`}
                 >
                   <ArrowUp className="w-4 h-4 group-hover:animate-bounce" />
-                  {question.votes.length}
                 </Button>
+                <span className="text-sm font-medium">
+                  {question.upvotes?.length || 0}
+                </span>
               </div>
             </div>
           </CardHeader>
@@ -449,43 +506,165 @@ const QuestionPage = ({ params: rawParams }) => {
             </h2>
           </div>
 
+          {/* Answer Form */}
+          {session && (
+            <Card className="bg-white/70 backdrop-blur-md border-0 shadow-lg">
+              <CardContent className="p-6">
+                <TiptapEditor
+                  content={answerContent}
+                  onChange={setAnswerContent}
+                  placeholder="Write your answer..."
+                />
+                <div className="flex justify-end mt-4">
+                  <Button
+                    onClick={handleSubmitAnswer}
+                    disabled={isSubmitting || !answerContent.trim()}
+                    className="bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600 text-white"
+                  >
+                    Post Answer
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
           {/* Answers List */}
           <div className="space-y-6">
-            {question.answers.map((answer, index) => (
-              <Card
-                key={answer._id}
-                className="bg-white/70 backdrop-blur-md border-0 shadow-lg hover:shadow-xl transition-all duration-300"
-                style={{ animationDelay: `${index * 100}ms` }}
-              >
-                <CardHeader>
-                  <div className="flex items-start justify-between gap-4">
-                    <div className="flex-1">
-                      <div
-                        className="prose prose-sm max-w-none mb-4"
-                        dangerouslySetInnerHTML={{ __html: answer.content }}
-                      />
+            {question.answers
+              .sort((a, b) => {
+                // Sort by accepted status first
+                if (a.isAccepted && !b.isAccepted) return -1;
+                if (!a.isAccepted && b.isAccepted) return 1;
+                // Then by vote count
+                return (
+                  (b.upvotes?.length || 0) -
+                  (b.downvotes?.length || 0) -
+                  (a.upvotes?.length || 0) +
+                  (a.downvotes?.length || 0)
+                );
+              })
+              .map((answer) => (
+                <Card
+                  key={answer._id}
+                  className={`bg-white/70 backdrop-blur-md border-0 shadow-lg hover:shadow-xl transition-all duration-300 ${
+                    answer.isAccepted ? "border-2 border-green-500" : ""
+                  }`}
+                >
+                  <CardContent className="p-6">
+                    {answer.isAccepted && (
+                      <div className="flex items-center gap-2 mb-4">
+                        <Badge
+                          variant="outline"
+                          className="bg-green-50 text-green-600 border-green-200"
+                        >
+                          ✓ Accepted Answer
+                        </Badge>
+                        <Badge
+                          variant="outline"
+                          className="bg-green-50 text-green-600 border-green-200"
+                        >
+                          Best Answer
+                        </Badge>
+                      </div>
+                    )}
 
-                      <div className="flex items-center gap-6 text-sm text-muted-foreground">
-                        <div className="flex items-center gap-2">
-                          <Avatar className="w-6 h-6">
-                            <AvatarFallback className="text-xs bg-gradient-to-r from-purple-500 to-pink-500 text-white">
-                              {answer.author?.name?.charAt(0).toUpperCase() ||
-                                "?"}
-                            </AvatarFallback>
-                          </Avatar>
-                          <span className="font-medium">
-                            {answer.author?.name || "Anonymous"}
-                          </span>
+                    <div className="flex gap-4">
+                      <div className="flex flex-col items-center gap-2">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleVoteAnswer(answer._id, "vote")}
+                          disabled={!session}
+                          className={
+                            answer.upvotes?.includes(session?.user?.id)
+                              ? "text-green-600"
+                              : ""
+                          }
+                        >
+                          <ArrowUp className="h-5 w-5" />
+                        </Button>
+                        <span className="text-sm font-medium">
+                          {(answer.upvotes?.length || 0) -
+                            (answer.downvotes?.length || 0)}
+                        </span>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() =>
+                            handleVoteAnswer(answer._id, "downvote")
+                          }
+                          disabled={!session}
+                          className={
+                            answer.downvotes?.includes(session?.user?.id)
+                              ? "text-red-600"
+                              : ""
+                          }
+                        >
+                          <ArrowDown className="h-5 w-5" />
+                        </Button>
+                      </div>
+
+                      <div className="flex-1">
+                        <div
+                          className="prose prose-sm max-w-none mb-4"
+                          dangerouslySetInnerHTML={{ __html: answer.content }}
+                        />
+
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-4">
+                            <div className="flex items-center gap-2">
+                              <Avatar className="w-6 h-6">
+                                <AvatarFallback className="text-xs bg-gradient-to-r from-purple-500 to-pink-500 text-white">
+                                  {answer.author?.name
+                                    ?.charAt(0)
+                                    .toUpperCase() || "?"}
+                                </AvatarFallback>
+                              </Avatar>
+                              <span className="font-medium">
+                                {answer.author?.name || "Anonymous"}
+                              </span>
+                            </div>
+                            <span className="text-sm text-muted-foreground">
+                              {formatDate(answer.createdAt)}
+                            </span>
+                          </div>
+
+                          <div className="flex items-center gap-4">
+                            <div className="flex items-center gap-2">
+                              <div className="w-32 h-2 bg-gray-200 rounded-full overflow-hidden">
+                                <div
+                                  className="h-full bg-green-500"
+                                  style={{
+                                    width: `${calculateAnswerQuality(answer)}%`,
+                                  }}
+                                />
+                              </div>
+                              <span className="text-sm text-muted-foreground">
+                                Answer Quality: {calculateAnswerQuality(answer)}
+                                %
+                              </span>
+                            </div>
+
+                            {session?.user?.id === question.author._id &&
+                              !answer.isAccepted && (
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => handleAcceptAnswer(answer._id)}
+                                  className="text-green-600 hover:text-green-700"
+                                >
+                                  Mark as Accepted
+                                </Button>
+                              )}
+                          </div>
                         </div>
-                        <div className="flex items-center gap-1">
-                          <Calendar className="w-4 h-4" />
-                          {formatDate(answer.createdAt)}
-                        </div>
+
+                        {/* Reply section */}
                         {session && (
                           <Button
                             variant="ghost"
                             size="sm"
-                            className="gap-2"
+                            className="mt-4 gap-2"
                             onClick={() => handleShowReplyEditor(answer._id)}
                           >
                             <Reply className="h-4 w-4" />
@@ -505,132 +684,119 @@ const QuestionPage = ({ params: rawParams }) => {
                     )}
                   </div>
 
-                      {/* Reply Editor */}
-                      {showReplyEditor[answer._id] && (
-                        <div className="mt-4 pl-6 border-l-2">
-                          <TiptapEditor
-                            content={replyContent[answer._id] || ""}
-                            onChange={(value) =>
-                              handleReplyChange(answer._id, value)
-                            }
-                            placeholder="Write your reply..."
-                          />
-                          <div className="flex justify-end mt-2">
-                            <Button
-                              size="sm"
-                              onClick={() => handleSubmitReply(answer._id)}
-                              disabled={!replyContent[answer._id]?.trim()}
-                              className="bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white"
-                            >
-                              Post Reply
-                            </Button>
+                        {showReplyEditor[answer._id] && (
+                          <div className="mt-4 pl-6 border-l-2">
+                            <TiptapEditor
+                              content={replyContent[answer._id] || ""}
+                              onChange={(value) =>
+                                handleReplyChange(answer._id, value)
+                              }
+                              placeholder="Write your reply..."
+                            />
+                            <div className="flex justify-end mt-2">
+                              <Button
+                                size="sm"
+                                onClick={() => handleSubmitReply(answer._id)}
+                                disabled={!replyContent[answer._id]?.trim()}
+                                className="bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white"
+                              >
+                                Post Reply
+                              </Button>
+                            </div>
                           </div>
-                        </div>
-                      )}
+                        )}
 
-                      {/* Replies */}
-                      {answer.replies?.length > 0 && (
-                        <div className="mt-4">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="gap-2"
-                            onClick={() => handleToggleReplies(answer._id)}
-                          >
-                            {showReplies[answer._id] ? (
-                              <ChevronUp className="h-4 w-4" />
-                            ) : (
-                              <ChevronDown className="h-4 w-4" />
-                            )}
-                            {answer.replies.length}{" "}
-                            {answer.replies.length === 1 ? "Reply" : "Replies"}
-                          </Button>
+                        {/* Replies */}
+                        {answer.replies?.length > 0 && (
+                          <div className="mt-4">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="gap-2"
+                              onClick={() => handleToggleReplies(answer._id)}
+                            >
+                              {showReplies[answer._id] ? (
+                                <ChevronUp className="h-4 w-4" />
+                              ) : (
+                                <ChevronDown className="h-4 w-4" />
+                              )}
+                              {answer.replies.length}{" "}
+                              {answer.replies.length === 1
+                                ? "Reply"
+                                : "Replies"}
+                            </Button>
 
-                          {showReplies[answer._id] && (
-                            <div className="space-y-4 mt-2 pl-6 border-l-2">
-                              {answer.replies.map((reply) => (
-                                <div
-                                  key={reply._id}
-                                  className="relative bg-white/50 rounded-lg p-4"
-                                >
-                                  <div className="flex gap-4">
-                                    {/* Vote buttons for reply */}
-                                    <div className="flex flex-col items-center gap-2">
-                                      <Button
-                                        variant="ghost"
-                                        size="sm"
-                                        onClick={() =>
-                                          handleVoteReply(answer._id, reply._id)
-                                        }
-                                        disabled={!session}
-                                        className={`h-6 w-6 p-0 hover:bg-gradient-to-r hover:from-purple-500 hover:to-pink-500 hover:text-white transition-all duration-300 ${
-                                          reply.votes.includes(
-                                            session?.user?.id
-                                          )
-                                            ? "text-primary"
-                                            : ""
-                                        }`}
-                                      >
-                                        <ArrowUp className="h-4 w-4" />
-                                      </Button>
-                                      <span className="text-sm font-semibold">
-                                        {reply.votes.length}
-                                      </span>
-                                    </div>
-
-                                    <div className="flex-1">
-                                      <div
-                                        className="prose prose-sm dark:prose-invert max-w-none mb-2"
-                                        dangerouslySetInnerHTML={{
-                                          __html: reply.content,
-                                        }}
-                                      />
-                                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                                        <Avatar className="w-5 h-5">
-                                          <AvatarFallback className="text-xs bg-gradient-to-r from-blue-500 to-purple-500 text-white">
-                                            {reply.author?.name
-                                              ?.charAt(0)
-                                              .toUpperCase() || "?"}
-                                          </AvatarFallback>
-                                        </Avatar>
-                                        <span>
-                                          {reply.author?.name || "Anonymous"}
+                            {showReplies[answer._id] && (
+                              <div className="space-y-4 mt-2 pl-6 border-l-2">
+                                {answer.replies.map((reply) => (
+                                  <div
+                                    key={reply._id}
+                                    className="relative bg-white/50 rounded-lg p-4"
+                                  >
+                                    <div className="flex gap-4">
+                                      {/* Vote buttons for reply */}
+                                      <div className="flex flex-col items-center gap-2">
+                                        <Button
+                                          variant="ghost"
+                                          size="sm"
+                                          onClick={() =>
+                                            handleVoteReply(
+                                              answer._id,
+                                              reply._id
+                                            )
+                                          }
+                                          disabled={!session}
+                                          className={`h-6 w-6 p-0 hover:bg-gradient-to-r hover:from-purple-500 hover:to-pink-500 hover:text-white transition-all duration-300 ${
+                                            reply.votes.includes(
+                                              session?.user?.id
+                                            )
+                                              ? "text-primary"
+                                              : ""
+                                          }`}
+                                        >
+                                          <ArrowUp className="h-4 w-4" />
+                                        </Button>
+                                        <span className="text-sm font-semibold">
+                                          {reply.votes.length}
                                         </span>
-                                        <span>•</span>
-                                        <span>
-                                          {formatDate(reply.createdAt)}
-                                        </span>
+                                      </div>
+
+                                      <div className="flex-1">
+                                        <div
+                                          className="prose prose-sm dark:prose-invert max-w-none mb-2"
+                                          dangerouslySetInnerHTML={{
+                                            __html: reply.content,
+                                          }}
+                                        />
+                                        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                                          <Avatar className="w-5 h-5">
+                                            <AvatarFallback className="text-xs bg-gradient-to-r from-blue-500 to-purple-500 text-white">
+                                              {reply.author?.name
+                                                ?.charAt(0)
+                                                .toUpperCase() || "?"}
+                                            </AvatarFallback>
+                                          </Avatar>
+                                          <span>
+                                            {reply.author?.name || "Anonymous"}
+                                          </span>
+                                          <span>•</span>
+                                          <span>
+                                            {formatDate(reply.createdAt)}
+                                          </span>
+                                        </div>
                                       </div>
                                     </div>
                                   </div>
-                                </div>
-                              ))}
-                            </div>
-                          )}
-                        </div>
-                      )}
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </div>
                     </div>
-
-                    <div className="flex flex-col items-center gap-3">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handleVoteAnswer(answer._id)}
-                        disabled={!session}
-                        className={`flex items-center gap-1 bg-white/50 hover:bg-gradient-to-r hover:from-green-500 hover:to-emerald-500 hover:text-white transition-all duration-300 hover:scale-110 group ${
-                          answer.votes.includes(session?.user?.id)
-                            ? "text-primary"
-                            : ""
-                        }`}
-                      >
-                        <ArrowUp className="w-4 h-4 group-hover:animate-bounce" />
-                        {answer.votes.length}
-                      </Button>
-                    </div>
-                  </div>
-                </CardHeader>
-              </Card>
-            ))}
+                  </CardContent>
+                </Card>
+              ))}
           </div>
 
           <Separator className="my-8" />
