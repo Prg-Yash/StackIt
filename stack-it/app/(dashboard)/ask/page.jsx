@@ -9,6 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Label } from "@/components/ui/label";
 import TiptapEditor from "@/components/ui/tiptap-editor";
+import { set } from "mongoose";
 
 const page = () => {
   const [title, setTitle] = useState("");
@@ -17,6 +18,7 @@ const page = () => {
   const [currentTag, setCurrentTag] = useState("");
   const [images, setImages] = useState([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const FLASKAUTH_URL = process.env.FLASKAUTH_URL || "http://0.0.0.0:5000";
 
   const handleAddTag = () => {
     if (currentTag.trim() && !tags.includes(currentTag.trim().toLowerCase())) {
@@ -71,6 +73,51 @@ const page = () => {
     }
   };
 
+  const handleToxicityCheck = async (text) => {
+    try {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_FLASKAUTH_URL}/toxic-analyze`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ "text": text }),
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to check toxicity");
+      }
+
+      const data = await response.json();
+      console.log("Toxicity check response:", data);
+      return data.flagged;
+    } catch (error) {
+      console.error("Error checking toxicity:", error);
+      return false;
+    }
+  };
+
+  const handleGenerateTags = async (question) => {
+    try {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_FLASKAUTH_URL}/generate-tags`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ "question": question }),
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to generate tags");
+      }
+
+      const data = await response.json();
+      return data.tags;
+    } catch (error) {
+      console.error("Error generating tags:", error);
+      return [];
+    }
+  };
+
   return (
     <div>
       <div className="container mx-auto px-4 py-6 max-w-4xl">
@@ -91,6 +138,13 @@ const page = () => {
                   placeholder="e.g., How to implement authentication in Next.js?"
                   value={title}
                   onChange={(e) => setTitle(e.target.value)}
+                  onBlur={(e) => {
+                    handleToxicityCheck(e.target.value).then((isToxic) => {
+                      if (isToxic) {
+                        setTitle("");
+                      }
+                    });
+                  }}
                   className="text-lg"
                   required
                 />
@@ -106,6 +160,14 @@ const page = () => {
                 <TiptapEditor
                   content={description}
                   onChange={setDescription}
+                  onBlur={(html) => {
+                    handleToxicityCheck(html).then((isToxic) => {
+                      if (isToxic) {
+                        console.warn("Toxic content detected, clearing description");
+                        setDescription("");
+                      }
+                    });
+                  }}
                   placeholder="Provide details about your question. Include what you've tried, what you expected to happen, and what actually happened..."
                 />
                 <p className="text-sm text-muted-foreground">
@@ -195,6 +257,20 @@ const page = () => {
                       disabled={!currentTag.trim()}
                     >
                       Add Tag
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={(e) => {
+                        handleGenerateTags(title).then((generatedTags) => {
+                          if (generatedTags.length > 0) {
+                            setTags([...new Set([...tags, ...generatedTags])]);
+                          }
+                        });
+                      }}
+                      disabled={!title.trim()}
+                    >
+                      Generate Tag
                     </Button>
                   </div>
 

@@ -30,6 +30,7 @@ const QuestionPage = ({ params: rawParams }) => {
   const [replyContent, setReplyContent] = useState({});
   const [showReplyEditor, setShowReplyEditor] = useState({});
   const [showReplies, setShowReplies] = useState({});
+  const [summary, setSummary] = useState("");
 
   useEffect(() => {
     fetchQuestion();
@@ -184,6 +185,29 @@ const QuestionPage = ({ params: rawParams }) => {
     }));
   };
 
+    const handleToxicityCheck = async (text) => {
+    try {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_FLASKAUTH_URL}/toxic-analyze`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ "text": text }),
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to check toxicity");
+      }
+
+      const data = await response.json();
+      console.log("Toxicity check response:", data);
+      return data.flagged;
+    } catch (error) {
+      console.error("Error checking toxicity:", error);
+      return false;
+    }
+  };
+
   const handleReplySubmit = async (answerId) => {
     if (!session || !replyContent[answerId]?.trim()) return;
 
@@ -253,6 +277,29 @@ const QuestionPage = ({ params: rawParams }) => {
     } catch (error) {
       console.error("Error voting:", error);
       toast.error("Failed to process vote");
+    }
+  };
+
+    const handleSummarize = async (text) => {
+    try {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_FLASKAUTH_URL}/summarize`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ "text": text }),
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to check toxicity");
+      }
+
+      const data = await response.json();
+      console.log("Summary response:", data.summary);
+      setSummary(data.summary);
+    } catch (error) {
+      console.error("Error checking toxicity:", error);
+      return null;
     }
   };
 
@@ -394,6 +441,17 @@ const QuestionPage = ({ params: rawParams }) => {
                         Reply
                       </Button>
                     )}
+                    {session && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="gap-2"
+                        onClick={() => handleSummarize(answer.content)}
+                        disabled={!answer.content.trim()}
+                      >
+                        Summarize
+                      </Button>
+                    )}
                   </div>
 
                   {/* Reply Editor */}
@@ -512,6 +570,14 @@ const QuestionPage = ({ params: rawParams }) => {
                 <TiptapEditor
                   content={answerContent}
                   onChange={setAnswerContent}
+                  onBlur={(html) => {
+                    handleToxicityCheck(html).then((isToxic) => {
+                      if (isToxic) {
+                        console.warn("Toxic content detected, clearing description");
+                        setAnswerContent("");
+                      }
+                    });
+                  }}
                   placeholder="Write your answer here..."
                 />
                 <div className="flex justify-end">

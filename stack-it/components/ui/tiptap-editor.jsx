@@ -16,7 +16,7 @@ import {
   Quote,
 } from "lucide-react";
 
-const TiptapEditor = ({ content, onChange, placeholder }) => {
+const TiptapEditor = ({ content, onChange, placeholder, onBlur }) => {
   const editor = useEditor({
     extensions: [
       StarterKit.configure({
@@ -50,6 +50,9 @@ const TiptapEditor = ({ content, onChange, placeholder }) => {
     content,
     onUpdate: ({ editor }) => {
       onChange(editor.getHTML());
+    },
+    onBlur: ({ editor }) => {
+      onBlur(editor.getHTML());
     },
     editorProps: {
       attributes: {

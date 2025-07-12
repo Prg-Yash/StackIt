@@ -1,4 +1,5 @@
 from flask import Flask, request, jsonify
+from flask_cors import CORS
 from bot import ask_bot
 from tags import get_tags
 from toxicity_detector import ToxicityDetector
@@ -11,6 +12,7 @@ summarizer = BartSummarizer()
 
 # Flask App
 app = Flask(__name__)
+CORS(app, resources={r"/*": {"origins": "*"}})
 
 # route for asking bot for quick answers
 @app.route("/ask-bot", methods=["POST"])
