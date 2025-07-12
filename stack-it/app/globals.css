@@ -41,6 +41,9 @@
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
   --radius-xl: calc(var(--radius) + 4px);
+
+  --font-josefin-sans: var(--font-josefin-sans);
+  --font-roboto: var(--font-roboto);
 }
 
 :root {
@@ -118,5 +121,8 @@
   }
   body {
     @apply bg-background text-foreground;
+  }
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-josefin-sans;
   }
 }
