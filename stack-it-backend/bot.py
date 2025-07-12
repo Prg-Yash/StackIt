@@ -14,10 +14,23 @@ model = ChatHuggingFace(
 )
 
 prompt = PromptTemplate.from_template(
-    "You are a helpfull assistant and expert. You have to help the user to solve their queries. If you don't know the answer simply say \"I don't know\". Finally try to keep the answer crispy and to the point\n\nUser: {question}\n\nAnswer:"
+    "You are a helpful assistant and expert. You have to help the user to solve their queries. "
+    "If you don't know the answer simply say \"I don't know\". "
+    "Finally try to keep the answer crispy and to the point.\n\nUser: {question}\n\nAnswer:"
 )
 
 parser = StrOutputParser()
 
 chain = prompt | model | parser
+
+def ask_bot(question: str) -> str:
+    """
+    Calls the assistant chain with a user question and returns a clean answer.
+    """
+    if not question.strip():
+        raise ValueError("Empty question")
+
+    result = chain.invoke({"question": question})
+    return result.strip()
+
 
