@@ -30,23 +30,29 @@ export async function POST(req, { params }) {
     }
 
     const userId = session.user.id;
-    const hasVoted = question.votes.includes(userId);
+    const hasUpvoted = question.upvotes?.includes(userId);
 
-    if (hasVoted) {
-      // Remove vote
-      question.votes = question.votes.filter((id) => id.toString() !== userId);
+    // Initialize arrays if they don't exist
+    if (!question.upvotes) question.upvotes = [];
+
+    // Handle upvote
+    if (hasUpvoted) {
+      // Remove upvote
+      question.upvotes = question.upvotes.filter(
+        (id) => id.toString() !== userId
+      );
     } else {
-      // Add vote
-      question.votes.push(userId);
+      // Add upvote
+      question.upvotes.push(userId);
     }
 
     await question.save();
 
     return new Response(
       JSON.stringify({
-        message: hasVoted ? "Vote removed" : "Vote added",
-        votes: question.votes.length,
-        hasVoted: !hasVoted,
+        message: hasUpvoted ? "Vote removed" : "Vote added",
+        upvotes: question.upvotes.length,
+        hasUpvoted: !hasUpvoted,
       }),
       {
         status: 200,

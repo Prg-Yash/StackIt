@@ -41,15 +41,17 @@ export async function POST(req, { params }) {
     if (!answer.upvotes) answer.upvotes = [];
     if (!answer.downvotes) answer.downvotes = [];
 
-    // Handle upvote
-    if (hasUpvoted) {
-      // Remove upvote
-      answer.upvotes = answer.upvotes.filter((id) => id.toString() !== userId);
+    // Handle downvote
+    if (hasDownvoted) {
+      // Remove downvote
+      answer.downvotes = answer.downvotes.filter(
+        (id) => id.toString() !== userId
+      );
     } else {
-      // Add upvote and remove downvote if exists
-      answer.upvotes.push(userId);
-      if (hasDownvoted) {
-        answer.downvotes = answer.downvotes.filter(
+      // Add downvote and remove upvote if exists
+      answer.downvotes.push(userId);
+      if (hasUpvoted) {
+        answer.upvotes = answer.upvotes.filter(
           (id) => id.toString() !== userId
         );
       }
@@ -59,11 +61,11 @@ export async function POST(req, { params }) {
 
     return new Response(
       JSON.stringify({
-        message: hasUpvoted ? "Vote removed" : "Vote added",
+        message: hasDownvoted ? "Downvote removed" : "Downvote added",
         upvotes: answer.upvotes.length,
         downvotes: answer.downvotes.length,
-        hasUpvoted: !hasUpvoted,
-        hasDownvoted: false,
+        hasUpvoted: false,
+        hasDownvoted: !hasDownvoted,
       }),
       {
         status: 200,
@@ -71,7 +73,7 @@ export async function POST(req, { params }) {
       }
     );
   } catch (error) {
-    console.error("Error voting answer:", error);
+    console.error("Error downvoting answer:", error);
     return new Response(JSON.stringify({ error: "Failed to process vote" }), {
       status: 500,
       headers: { "Content-Type": "application/json" },

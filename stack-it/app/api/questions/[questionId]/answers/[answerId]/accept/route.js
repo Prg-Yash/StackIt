@@ -25,6 +25,25 @@ export async function POST(req, { params }) {
       });
     }
 
+    // Check if user is the question author
+    if (question.author.toString() !== session.user.id) {
+      return new Response(
+        JSON.stringify({
+          error: "Only the question author can accept answers",
+        }),
+        {
+          status: 403,
+          headers: { "Content-Type": "application/json" },
+        }
+      );
+    }
+
+    // Reset all answers' accepted status
+    question.answers.forEach((answer) => {
+      answer.isAccepted = false;
+    });
+
+    // Set the selected answer as accepted
     const answer = question.answers.id(answerId);
     if (!answer) {
       return new Response(JSON.stringify({ error: "Answer not found" }), {
@@ -33,46 +52,19 @@ export async function POST(req, { params }) {
       });
     }
 
-    const userId = session.user.id;
-    const hasUpvoted = answer.upvotes?.includes(userId);
-    const hasDownvoted = answer.downvotes?.includes(userId);
-
-    // Initialize arrays if they don't exist
-    if (!answer.upvotes) answer.upvotes = [];
-    if (!answer.downvotes) answer.downvotes = [];
-
-    // Handle upvote
-    if (hasUpvoted) {
-      // Remove upvote
-      answer.upvotes = answer.upvotes.filter((id) => id.toString() !== userId);
-    } else {
-      // Add upvote and remove downvote if exists
-      answer.upvotes.push(userId);
-      if (hasDownvoted) {
-        answer.downvotes = answer.downvotes.filter(
-          (id) => id.toString() !== userId
-        );
-      }
-    }
-
+    answer.isAccepted = true;
     await question.save();
 
     return new Response(
-      JSON.stringify({
-        message: hasUpvoted ? "Vote removed" : "Vote added",
-        upvotes: answer.upvotes.length,
-        downvotes: answer.downvotes.length,
-        hasUpvoted: !hasUpvoted,
-        hasDownvoted: false,
-      }),
+      JSON.stringify({ message: "Answer marked as accepted" }),
       {
         status: 200,
         headers: { "Content-Type": "application/json" },
       }
     );
   } catch (error) {
-    console.error("Error voting answer:", error);
-    return new Response(JSON.stringify({ error: "Failed to process vote" }), {
+    console.error("Error accepting answer:", error);
+    return new Response(JSON.stringify({ error: "Failed to accept answer" }), {
       status: 500,
       headers: { "Content-Type": "application/json" },
     });
