@@ -1,0 +1,8 @@
+flask
+python-dotenv
+langchain>=0.1.15
+langchain-core>=0.1.15
+langchain-huggingface
+transformers
+huggingface_hub
+pydantic==2.11
