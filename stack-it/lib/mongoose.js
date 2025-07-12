@@ -1,4 +1,4 @@
-import mongoose from 'mongoose';
+import mongoose from "mongoose";
 
 let isConnected = false; // track connection status
 
@@ -9,7 +9,7 @@ export const connectDB = async () => {
 
   try {
     await mongoose.connect(process.env.MONGODB_URI, {
-      dbName: "stackit"
+      dbName: "stackit",
     });
 
     isConnected = true;
