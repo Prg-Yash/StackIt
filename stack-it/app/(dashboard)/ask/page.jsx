@@ -2,23 +2,13 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import {
-  ArrowLeft,
-  Upload,
-  X,
-  Bold,
-  Italic,
-  List,
-  LinkIcon,
-  Tag,
-  Send,
-} from "lucide-react";
+import { ArrowLeft, Upload, X, Tag, Send } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Label } from "@/components/ui/label";
+import TiptapEditor from "@/components/ui/tiptap-editor";
 
 const page = () => {
   const [title, setTitle] = useState("");
@@ -31,7 +21,6 @@ const page = () => {
   const handleAddTag = () => {
     if (currentTag.trim() && !tags.includes(currentTag.trim().toLowerCase())) {
       setTags([...tags, currentTag.trim().toLowerCase()]);
-      setCurrentTag("");
     }
   };
 
@@ -46,37 +35,6 @@ const page = () => {
 
   const handleRemoveImage = (index) => {
     setImages(images.filter((_, i) => i !== index));
-  };
-
-  const formatText = (type) => {
-    const textarea = document.querySelector('textarea[name="description"]');
-    if (!textarea) return;
-
-    const start = textarea.selectionStart;
-    const end = textarea.selectionEnd;
-    const selectedText = description.substring(start, end);
-
-    let formattedText = selectedText;
-    switch (type) {
-      case "bold":
-        formattedText = `**${selectedText}**`;
-        break;
-      case "italic":
-        formattedText = `*${selectedText}*`;
-        break;
-      case "list":
-        formattedText = `\n- ${selectedText}`;
-        break;
-      case "link":
-        formattedText = `[${selectedText}](url)`;
-        break;
-    }
-
-    const newText =
-      description.substring(0, start) +
-      formattedText +
-      description.substring(end);
-    setDescription(newText);
   };
 
   const handleSubmit = async (e) => {
@@ -98,9 +56,8 @@ const page = () => {
         }),
       });
 
-      const data = await response.json();
-
       if (!response.ok) {
+        const data = await response.json();
         throw new Error(data.error || "Failed to post question");
       }
 
@@ -146,58 +103,10 @@ const page = () => {
               {/* Description */}
               <div className="space-y-2">
                 <Label htmlFor="description">Description *</Label>
-
-                {/* Rich Text Editor Toolbar */}
-                <div className="flex items-center gap-2 p-2 border rounded-md bg-muted/50">
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => formatText("bold")}
-                    className="h-8 w-8 p-0"
-                  >
-                    <Bold className="h-4 w-4" />
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => formatText("italic")}
-                    className="h-8 w-8 p-0"
-                  >
-                    <Italic className="h-4 w-4" />
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => formatText("list")}
-                    className="h-8 w-8 p-0"
-                  >
-                    <List className="h-4 w-4" />
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => formatText("link")}
-                    className="h-8 w-8 p-0"
-                  >
-                    <LinkIcon className="h-4 w-4" />
-                  </Button>
-                  <div className="ml-auto text-xs text-muted-foreground">
-                    Supports Markdown formatting
-                  </div>
-                </div>
-
-                <Textarea
-                  id="description"
-                  name="description"
+                <TiptapEditor
+                  content={description}
+                  onChange={setDescription}
                   placeholder="Provide details about your question. Include what you've tried, what you expected to happen, and what actually happened..."
-                  value={description}
-                  onChange={(e) => setDescription(e.target.value)}
-                  className="min-h-40 resize-none"
-                  required
                 />
                 <p className="text-sm text-muted-foreground">
                   Include all the information someone would need to answer your
@@ -296,18 +205,10 @@ const page = () => {
                         <Badge
                           key={tag}
                           variant="secondary"
-                          className="flex items-center gap-1"
+                          className="cursor-pointer hover:bg-destructive hover:text-destructive-foreground"
+                          onClick={() => handleRemoveTag(tag)}
                         >
-                          {tag}
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="sm"
-                            className="h-4 w-4 p-0 hover:bg-transparent"
-                            onClick={() => handleRemoveTag(tag)}
-                          >
-                            <X className="h-3 w-3" />
-                          </Button>
+                          {tag} ×
                         </Badge>
                       ))}
                     </div>
@@ -320,22 +221,22 @@ const page = () => {
               </div>
 
               {/* Submit Button */}
-              <div className="flex items-center justify-between pt-6 border-t">
-                <p className="text-sm text-muted-foreground">
-                  By posting your question, you agree to our terms of service
-                </p>
-                <Button
-                  type="submit"
-                  disabled={
-                    !title.trim() ||
-                    !description.trim() ||
-                    tags.length === 0 ||
-                    isSubmitting
-                  }
-                  className="flex items-center gap-2"
-                >
-                  <Send className="w-4 h-4" />
-                  {isSubmitting ? "Publishing..." : "Post Question"}
+              <div className="flex justify-end gap-4">
+                <Link href="/questions">
+                  <Button type="button" variant="outline">
+                    <ArrowLeft className="w-4 h-4 mr-2" />
+                    Cancel
+                  </Button>
+                </Link>
+                <Button type="submit" disabled={isSubmitting}>
+                  {isSubmitting ? (
+                    "Posting..."
+                  ) : (
+                    <>
+                      <Send className="w-4 h-4 mr-2" />
+                      Post Question
+                    </>
+                  )}
                 </Button>
               </div>
             </form>

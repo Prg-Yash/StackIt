@@ -274,10 +274,12 @@ const page = () => {
                             <h2 className="text-xl font-semibold mb-2">
                               {question.title}
                             </h2>
-                            <p className="text-muted-foreground line-clamp-2 mb-4">
-                              {question.description}
-                            </p>
-
+                            <div
+                              className="prose prose-sm sm:prose-base dark:prose-invert mb-4"
+                              dangerouslySetInnerHTML={{
+                                __html: question.description,
+                              }}
+                            />
                             <div className="flex flex-wrap items-center gap-2 text-sm">
                               <div className="flex gap-1">
                                 {question.tags.map((tag) => (
