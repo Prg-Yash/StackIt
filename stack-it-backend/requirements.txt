@@ -1,5 +1,5 @@
 flask
-pip install "numpy<2.0.0"
+numpy<2.0.0
 python-dotenv
 langchain>=0.1.15
 langchain-core>=0.1.15
@@ -7,4 +7,4 @@ langchain-huggingface
 transformers
 huggingface_hub
 pydantic==2.11
-pip install huggingface_hub[hf_xet]
+huggingface_hub[hf_xet]
