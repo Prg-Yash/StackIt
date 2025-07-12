@@ -2,9 +2,12 @@ from flask import Flask, request, jsonify
 from bot import ask_bot
 from tags import get_tags
 from toxicity_detector import ToxicityDetector
+from bart_summarizer import BartSummarizer
 
 # initialize the toxicity detector
 toxicity_detector = ToxicityDetector()
+# initialize the summarizer
+summarizer = BartSummarizer()
 
 # Flask App
 app = Flask(__name__)
@@ -35,9 +38,8 @@ def generate_tags():
 
     try:
         tags = get_tags(question)
-        return jsonify({"tags": tags})  # already a Python list
+        return jsonify({"tags": tags})
     except Exception as e:
-        # In production you might log e instead of returning the string
         return jsonify({"error": str(e)}), 500
 
 # route for analyzing text for toxicity
@@ -54,6 +56,16 @@ def analyze():
         or scores["insult"]  > 0.60
     )
     return jsonify({"scores": scores, "flagged": flagged})
+
+# Route for text summarization
+@app.route("/summarize", methods=["POST"])
+def summarize():
+    data = request.get_json()
+    if not data or "text" not in data:
+        return jsonify({"error": "Missing 'text' in request body"}), 400
+
+    summary = summarizer.summarize(data["text"])
+    return jsonify({"summary": summary})
 
 # Run app
 if __name__ == "__main__":
