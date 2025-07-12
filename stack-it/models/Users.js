@@ -39,6 +39,15 @@ const UserSchema = new Schema(
       enum: ROLES,
       default: "user",
     },
+    viewedQuestions: {
+      type: [
+        {
+          type: Schema.Types.ObjectId,
+          ref: "Question",
+        },
+      ],
+      default: [],
+    },
   },
   { timestamps: true }
 );

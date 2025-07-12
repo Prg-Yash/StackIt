@@ -2,7 +2,7 @@ import mongoose from "mongoose";
 
 const { Schema } = mongoose;
 
-const AnswerSchema = new Schema(
+const ReplySchema = new Schema(
   {
     content: {
       type: Schema.Types.Mixed,
@@ -23,6 +23,45 @@ const AnswerSchema = new Schema(
         ref: "User",
       },
     ],
+  },
+  { _id: true }
+);
+
+const AnswerSchema = new Schema(
+  {
+    content: {
+      type: Schema.Types.Mixed,
+      required: true,
+    },
+    author: {
+      type: Schema.Types.ObjectId,
+      ref: "User",
+      required: true,
+    },
+    createdAt: {
+      type: Date,
+      default: Date.now,
+    },
+    upvotes: [
+      {
+        type: Schema.Types.ObjectId,
+        ref: "User",
+      },
+    ],
+    downvotes: [
+      {
+        type: Schema.Types.ObjectId,
+        ref: "User",
+      },
+    ],
+    isAccepted: {
+      type: Boolean,
+      default: false,
+    },
+    replies: {
+      type: [ReplySchema],
+      default: [],
+    },
   },
   { _id: true }
 );
@@ -58,7 +97,13 @@ const QuestionSchema = new Schema(
       index: true,
       default: [],
     },
-    votes: [
+    upvotes: [
+      {
+        type: Schema.Types.ObjectId,
+        ref: "User",
+      },
+    ],
+    downvotes: [
       {
         type: Schema.Types.ObjectId,
         ref: "User",

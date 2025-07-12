@@ -33,6 +33,9 @@ export async function GET(req) {
       case "most-answers":
         sortOptions = { "answers.length": -1, createdAt: -1 };
         break;
+      case "most-views":
+        sortOptions = { views: -1, createdAt: -1 };
+        break;
       case "newest":
       default:
         sortOptions = { createdAt: -1 };
